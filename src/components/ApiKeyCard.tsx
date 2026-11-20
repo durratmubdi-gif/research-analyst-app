@@ -9,7 +9,12 @@ import {
   ChevronUp,
   ExternalLink,
   ShieldCheck,
+  Lock,
+  Unlock,
 } from 'lucide-react';
+
+const PAGE_PASSWORD = 'Aakkmm@2013';
+const STORAGE_KEY = 'key_page_authorized';
 
 interface ApiKeyCardProps {
   apiKey: string;
@@ -22,12 +27,39 @@ export const ApiKeyCard: React.FC<ApiKeyCardProps> = ({
   onSaveKey,
   onClearKey,
 }) => {
+  const [isAuthorized, setIsAuthorized] = useState<boolean>(() => {
+    try {
+      return sessionStorage.getItem(STORAGE_KEY) === 'yes';
+    } catch {
+      return false;
+    }
+  });
+  const [passwordInput, setPasswordInput] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [authError, setAuthError] = useState(false);
+
   const [inputValue, setInputValue] = useState(apiKey);
   const [showKey, setShowKey] = useState(false);
   const [isExpanded, setIsExpanded] = useState(!apiKey);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
   const isSaved = Boolean(apiKey.trim());
+
+  const handleUnlock = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (passwordInput === PAGE_PASSWORD) {
+      try {
+        sessionStorage.setItem(STORAGE_KEY, 'yes');
+      } catch {
+        // ignore storage errors
+      }
+      setAuthError(false);
+      setIsAuthorized(true);
+      setPasswordInput('');
+    } else {
+      setAuthError(true);
+    }
+  };
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,7 +106,7 @@ export const ApiKeyCard: React.FC<ApiKeyCardProps> = ({
                 : 'bg-amber-100 text-amber-800'
             }`}
           >
-            <Key className="w-4 h-4" />
+            {isAuthorized ? <Key className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
@@ -91,9 +123,17 @@ export const ApiKeyCard: React.FC<ApiKeyCardProps> = ({
                   مطلوب للتحليل
                 </span>
               )}
+              {!isAuthorized && (
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-slate-200/80 text-slate-700">
+                  <Lock className="w-3 h-3" />
+                  محمي برقم سري
+                </span>
+              )}
             </div>
             <p className="text-xs text-slate-600 truncate">
-              {isSaved
+              {!isAuthorized
+                ? 'صفحة إعدادات المفتاح محمية برقم سري للدخول المصرح به فقط'
+                : isSaved
                 ? 'يُحفظ في متصفحك (localStorage) فقط ويتصل مباشرة بـ Google Gemini من المتصفح'
                 : 'أدخل مفتاح Google Gemini المجاني للبدء بالتحليل من متصفحك مباشرة'}
             </p>
@@ -111,70 +151,125 @@ export const ApiKeyCard: React.FC<ApiKeyCardProps> = ({
 
       {/* Expandable body */}
       {isExpanded && (
-        <form onSubmit={handleSave} className="px-4 sm:px-5 pb-4 pt-1 space-y-3 border-t border-slate-200/60">
-          <div className="flex flex-col sm:flex-row gap-2 pt-2">
-            <div className="relative flex-1">
-              <input
-                type={showKey ? 'text' : 'password'}
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                placeholder="AIzaSy... الصق مفتاح Gemini هنا"
-                dir="ltr"
-                className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-300 rounded-xl text-sm font-mono focus:outline-hidden focus:ring-2 focus:ring-teal-600 transition text-left"
-              />
-              <button
-                type="button"
-                onClick={() => setShowKey(!showKey)}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
-                title={showKey ? 'إخفاء المفتاح' : 'إظهار المفتاح'}
-              >
-                {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
+        !isAuthorized ? (
+          <form
+            onSubmit={handleUnlock}
+            className="px-4 sm:px-5 pb-4 pt-3 space-y-3 border-t border-slate-200/60"
+          >
+            <p className="text-xs sm:text-sm font-bold text-slate-800">
+              ⚠️ هذه الصفحة محمية — أدخل الرقم السري:
+            </p>
 
-            <div className="flex gap-2 shrink-0">
-              <button
-                type="submit"
-                className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-teal-900 text-white text-xs sm:text-sm font-bold transition"
-              >
-                حفظ المفتاح
-              </button>
+            {authError && (
+              <div className="p-4 rounded-xl bg-white border border-rose-200 shadow-xs text-center space-y-1">
+                <h4 className="text-sm font-extrabold text-[#c00]">
+                  🚫 غير مصرح بالوصول
+                </h4>
+                <p className="text-xs text-slate-600">
+                  الرقم السري غير صحيح أو الصفحة ليست مخصصة لك.
+                </p>
+              </div>
+            )}
 
-              {isSaved && (
+            <div className="flex flex-col sm:flex-row gap-2">
+              <div className="relative flex-1">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={passwordInput}
+                  onChange={(e) => {
+                    setPasswordInput(e.target.value);
+                    if (authError) setAuthError(false);
+                  }}
+                  placeholder="أدخل الرقم السري لإدارة المفتاح"
+                  dir="ltr"
+                  className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-300 rounded-xl text-sm font-mono focus:outline-hidden focus:ring-2 focus:ring-teal-600 transition text-left"
+                />
                 <button
                   type="button"
-                  onClick={handleClear}
-                  className="px-3 py-2.5 rounded-xl bg-white hover:bg-rose-50 text-rose-600 border border-slate-200 hover:border-rose-200 text-xs sm:text-sm font-semibold transition flex items-center gap-1"
-                  title="مسح المفتاح"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
+                  title={showPassword ? 'إخفاء الرقم السري' : 'إظهار الرقم السري'}
                 >
-                  <Trash2 className="w-4 h-4" />
-                  <span>مسح</span>
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
-              )}
+              </div>
+
+              <button
+                type="submit"
+                disabled={!passwordInput}
+                className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-teal-900 disabled:opacity-40 text-white text-xs sm:text-sm font-bold transition inline-flex items-center justify-center gap-1.5 shrink-0"
+              >
+                <Unlock className="w-4 h-4" />
+                <span>فتح صفحة المفتاح</span>
+              </button>
             </div>
-          </div>
+          </form>
+        ) : (
+          <form onSubmit={handleSave} className="px-4 sm:px-5 pb-4 pt-1 space-y-3 border-t border-slate-200/60">
+            <div className="flex flex-col sm:flex-row gap-2 pt-2">
+              <div className="relative flex-1">
+                <input
+                  type={showKey ? 'text' : 'password'}
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  placeholder="AIzaSy... الصق مفتاح Gemini هنا"
+                  dir="ltr"
+                  className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-300 rounded-xl text-sm font-mono focus:outline-hidden focus:ring-2 focus:ring-teal-600 transition text-left"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowKey(!showKey)}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
+                  title={showKey ? 'إخفاء المفتاح' : 'إظهار المفتاح'}
+                >
+                  {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
 
-          {statusMessage && (
-            <p className="text-xs font-bold text-teal-800">{statusMessage}</p>
-          )}
+              <div className="flex gap-2 shrink-0">
+                <button
+                  type="submit"
+                  className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-teal-900 text-white text-xs sm:text-sm font-bold transition"
+                >
+                  حفظ المفتاح
+                </button>
 
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-slate-600">
-            <span className="flex items-center gap-1.5">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-              المفتاح يبقى محفوظاً في جهازك (localStorage) فقط ولا يُرسل إلى أي خادم وسيط.
-            </span>
+                {isSaved && (
+                  <button
+                    type="button"
+                    onClick={handleClear}
+                    className="px-3 py-2.5 rounded-xl bg-white hover:bg-rose-50 text-rose-600 border border-slate-200 hover:border-rose-200 text-xs sm:text-sm font-semibold transition flex items-center gap-1"
+                    title="مسح المفتاح"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    <span>مسح</span>
+                  </button>
+                )}
+              </div>
+            </div>
 
-            <a
-              href="https://aistudio.google.com/apikey"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-teal-700 hover:text-teal-900 font-bold hover:underline shrink-0"
-            >
-              <span>احصل على مفتاح مجاني من Google AI Studio</span>
-              <ExternalLink className="w-3 h-3" />
-            </a>
-          </div>
-        </form>
+            {statusMessage && (
+              <p className="text-xs font-bold text-teal-800">{statusMessage}</p>
+            )}
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-slate-600">
+              <span className="flex items-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                المفتاح يبقى محفوظاً في جهازك (localStorage) فقط ولا يُرسل إلى أي خادم وسيط.
+              </span>
+
+              <a
+                href="https://aistudio.google.com/apikey"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-teal-700 hover:text-teal-900 font-bold hover:underline shrink-0"
+              >
+                <span>احصل على مفتاح مجاني من Google AI Studio</span>
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
+          </form>
+        )
       )}
     </div>
   );
