@@ -22,7 +22,6 @@
     }
     .btn-primary { background: #0F172A; color: #fff; width: 100%; }
     .btn-primary:hover { background: #134E4A; }
-    .btn-ghost { background: #F1F5F9; color: #334155; text-decoration: none; display: inline-block; text-align: center; }
     input[type="password"] {
       width: 100%; padding: 12px 14px; border: 1px solid #CBD5E1; border-radius: 12px;
       font-size: 14px; direction: ltr; text-align: left; outline: none; margin: 10px 0 14px;
@@ -30,18 +29,18 @@
     input:focus { border-color: #0D9488; box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15); }
     .denied-box { text-align: center; }
     .denied-box h2 { color: #c00; margin: 0 0 10px; font-size: 20px; }
-    .denied-box p { color: #666; margin: 0 0 18px; line-height: 1.7; font-size: 14px; }
+    .denied-box p { color: #666; margin: 0; line-height: 1.7; font-size: 14px; }
     .status { font-size: 13px; font-weight: 700; margin-top: 12px; color: #0F766E; text-align: center; }
   </style>
   <script>
-    // حماية صفحة المفتاح — إخفاء المحتوى بالكامل حتى إدخال الرقم السري الصحيح
+    // حماية مستمرة: إخفاء المحتوى بالكامل عند كل تحميل أو فتح للصفحة حتى إدخال الرقم السري الصحيح
     var PAGE_PASSWORD = "Aakkmm@2013";
-    var STORAGE_KEY = "key_page_authorized";
+    try { sessionStorage.removeItem("key_page_authorized"); } catch (e) {}
     document.documentElement.style.visibility = "hidden";
   </script>
 </head>
 <body>
-  <!-- بوابة التحقق تظهر قبل أي محتوى -->
+  <!-- بوابة التحقق تظهر قبل أي محتوى في كل مرة -->
   <div id="gate-screen" class="center-screen">
     <div class="card">
       <div id="gate-form-box">
@@ -60,11 +59,12 @@
     </div>
   </div>
 
-  <!-- المحتوى الحقيقي مخفي تماماً افتراضياً: فقط حقل المفتاح وزر الحفظ -->
+  <!-- المحتوى الحقيقي مخفي تماماً افتراضياً: فقط العنوان + حقل الإدخال + زر الحفظ -->
   <main id="protected-content" class="center-screen">
     <div class="card">
+      <h2 style="margin:0 0 12px;font-size:18px;color:#0F172A;">مفتاح Gemini API</h2>
       <form id="key-form">
-        <input type="password" id="api-key-input" placeholder="أدخل مفتاح Gemini هنا..." />
+        <input type="password" id="api-key-input" placeholder="أدخل مفتاح Gemini هنا..." autocomplete="off" />
         <button type="submit" class="btn btn-primary">حفظ المفتاح</button>
       </form>
       <p id="key-status" class="status"></p>
@@ -80,24 +80,14 @@
       var passForm = document.getElementById("pass-form");
       var passInput = document.getElementById("pass-input");
 
-      function unlockPage() {
-        gateScreen.style.display = "none";
-        protectedContent.style.display = "flex";
-        document.documentElement.style.visibility = "visible";
-        loadKeyUI();
-      }
-
-      if (sessionStorage.getItem(STORAGE_KEY) === "yes") {
-        unlockPage();
-      } else {
-        document.documentElement.style.visibility = "visible";
-      }
+      document.documentElement.style.visibility = "visible";
 
       passForm.addEventListener("submit", function (e) {
         e.preventDefault();
         if (passInput.value === PAGE_PASSWORD) {
-          sessionStorage.setItem(STORAGE_KEY, "yes");
-          unlockPage();
+          gateScreen.style.display = "none";
+          protectedContent.style.display = "flex";
+          loadKeyUI();
         } else {
           protectedContent.remove();
           gateFormBox.style.display = "none";
@@ -110,9 +100,6 @@
         var keyForm = document.getElementById("key-form");
         var statusEl = document.getElementById("key-status");
 
-        var saved = localStorage.getItem("gemini_api_key") || "";
-        keyInput.value = saved;
-
         keyForm.addEventListener("submit", function (e) {
           e.preventDefault();
           var val = keyInput.value.trim();
@@ -121,6 +108,7 @@
             return;
           }
           localStorage.setItem("gemini_api_key", val);
+          keyInput.value = "";
           statusEl.textContent = "تم حفظ المفتاح بنجاح ✅";
         });
       }
