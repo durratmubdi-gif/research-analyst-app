@@ -1,25 +1,25 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ChatMessage } from '../types/research';
 import {
-  MessageSquare,
   Send,
-  Sparkles,
   Bot,
   User,
-  X,
   ChevronDown,
   ChevronUp,
   Lightbulb,
 } from 'lucide-react';
+import { chatAboutResearchWithGemini } from '../services/geminiClient';
 
 interface PaperChatDrawerProps {
   researchText: string;
   paperTitle: string;
+  apiKey: string;
 }
 
 export const PaperChatDrawer: React.FC<PaperChatDrawerProps> = ({
   researchText,
   paperTitle,
+  apiKey,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -67,25 +67,17 @@ export const PaperChatDrawer: React.FC<PaperChatDrawerProps> = ({
     setIsLoading(true);
 
     try {
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          researchText,
-          question: questionToSend,
-          history: messages.slice(-4).map((m) => ({ role: m.role, content: m.text })),
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'فشلت معالجة السؤال');
-      }
+      const reply = await chatAboutResearchWithGemini(
+        researchText,
+        questionToSend,
+        messages.slice(-4).map((m) => ({ role: m.role, content: m.text })),
+        apiKey
+      );
 
       const botMsg: ChatMessage = {
         id: 'bot_' + Date.now(),
         role: 'assistant',
-        text: data.reply || 'لم يتم استلام رد.',
+        text: reply,
         timestamp: new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' }),
       };
 

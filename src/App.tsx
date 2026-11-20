@@ -11,6 +11,13 @@ import { DefenseQuestionsSection } from './components/DefenseQuestionsSection';
 import { ActionPlanSection } from './components/ActionPlanSection';
 import { PaperChatDrawer } from './components/PaperChatDrawer';
 import { SavedLibraryModal } from './components/SavedLibraryModal';
+import { ApiKeyCard } from './components/ApiKeyCard';
+import {
+  analyzeResearchWithGemini,
+  getStoredApiKey,
+  saveApiKey,
+  clearStoredApiKey,
+} from './services/geminiClient';
 import {
   AnalysisResult,
   AnalysisMode,
@@ -48,6 +55,7 @@ export default function App() {
   const [savedList, setSavedList] = useState<SavedResearch[]>([]);
   const [isSavedModalOpen, setIsSavedModalOpen] = useState<boolean>(false);
   const [isCurrentSaved, setIsCurrentSaved] = useState<boolean>(false);
+  const [apiKey, setApiKey] = useState<string>(() => getStoredApiKey());
 
   // Load saved list on mount
   useEffect(() => {
@@ -55,20 +63,36 @@ export default function App() {
     setSavedList(loaded);
   }, []);
 
+  const handleSaveApiKey = (key: string) => {
+    saveApiKey(key);
+    setApiKey(key.trim());
+    if (errorMessage) setErrorMessage(null);
+  };
+
+  const handleClearApiKey = () => {
+    clearStoredApiKey();
+    setApiKey('');
+  };
+
   const metrics = calculateTextMetrics(text);
   const canAnalyze = text.trim().length >= 40;
 
-  // Analysis function
+  // Analysis function (Direct Browser Fetch to Gemini API)
   const handleAnalyze = async () => {
     if (!canAnalyze || isLoading) return;
+
+    if (!apiKey.trim()) {
+      setErrorMessage('الرجاء إدخال مفتاح Gemini API وحفظه في البطاقة أعلاه قبل بدء التحليل.');
+      document.getElementById('api-key-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
 
     setErrorMessage(null);
     setIsLoading(true);
     setIsCurrentSaved(false);
 
-    // Dynamic progress feedback
     const steps = [
-      'جاري استقراء النص الأكاديمي بواسطة Gemini...',
+      'جاري استقراء النص الأكاديمي مباشرة عبر Gemini...',
       'تفكيك المنهجية وتحليل الفرضيات والعينة...',
       'فحص النتائج الإحصائية ونقاط القوة والضعف...',
       'صياغة بنك أسئلة المناقشة والدفاع الأكاديمي...',
@@ -82,21 +106,8 @@ export default function App() {
     }, 2400);
 
     try {
-      const res = await fetch('/api/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text,
-          type: analysisMode,
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'حدث خطأ أثناء تحليل البحث');
-      }
-
-      setAnalysisResult(data.analysis);
+      const analysis = await analyzeResearchWithGemini(text, analysisMode, apiKey);
+      setAnalysisResult(analysis);
 
       // Smooth scroll to results
       setTimeout(() => {
@@ -107,7 +118,7 @@ export default function App() {
       }, 300);
     } catch (err: unknown) {
       const error = err as Error;
-      setErrorMessage(error.message || 'تعذر استكمال التحليل. يرجى التأكد من الاتصال والمحاولة مجدداً.');
+      setErrorMessage(error.message || 'تعذر استكمال التحليل. يرجى التأكد من صحة المفتاح والاتصال والمحاولة مجدداً.');
     } finally {
       clearInterval(interval);
       setIsLoading(false);
@@ -214,6 +225,13 @@ export default function App() {
             المنهجية والعينات، نرصد نقاط القوة والضعف، ونحاكي أسئلة لجنة المناقشة الأكاديمية.
           </p>
         </div>
+
+        {/* API Key Settings Card (localStorage) */}
+        <ApiKeyCard
+          apiKey={apiKey}
+          onSaveKey={handleSaveApiKey}
+          onClearKey={handleClearApiKey}
+        />
 
         {/* Input & Upload Controls */}
         <div className="space-y-4 no-print">
@@ -324,6 +342,7 @@ export default function App() {
             <PaperChatDrawer
               researchText={text}
               paperTitle={analysisResult.titleSuggestion || 'هذا البحث'}
+              apiKey={apiKey}
             />
           </div>
         )}

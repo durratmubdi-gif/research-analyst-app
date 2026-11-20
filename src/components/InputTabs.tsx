@@ -10,6 +10,7 @@ import {
   AlertCircle,
   FileCheck,
   ChevronDown,
+  ExternalLink,
 } from 'lucide-react';
 import { SAMPLE_RESEARCHES, SampleResearch } from '../data/sampleResearches';
 import { extractTextFromFile } from '../utils/pdfExtractor';
@@ -37,8 +38,6 @@ export const InputTabs: React.FC<InputTabsProps> = ({
   const [fileError, setFileError] = useState<string | null>(null);
   const [uploadedFileInfo, setUploadedFileInfo] = useState<{ name: string; pages: number; words: number } | null>(null);
   const [urlInput, setUrlInput] = useState('');
-  const [urlLoading, setUrlLoading] = useState(false);
-  const [urlError, setUrlError] = useState<string | null>(null);
   const [showSamplesDropdown, setShowSamplesDropdown] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -80,37 +79,9 @@ export const InputTabs: React.FC<InputTabsProps> = ({
     }
   };
 
-  // Handle URL fetch
-  const handleFetchUrl = async () => {
-    if (!urlInput.trim() || !urlInput.startsWith('http')) {
-      setUrlError('الرجاء كتابة رابط كامل وصحيح يبدأ بـ http:// أو https://');
-      return;
-    }
-
-    setUrlError(null);
-    setUrlLoading(true);
-
-    try {
-      const res = await fetch('/api/fetch-url', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: urlInput.trim() }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'فشل جلب الرابط');
-      }
-
-      onChangeText(data.text);
-      setActiveInputTab('paste');
-      setUrlInput('');
-    } catch (err: unknown) {
-      const error = err as Error;
-      setUrlError(error.message || 'تعذر جلب محتوى المقال من الرابط. يمكنك نسخ نصه ولصقه يدوياً.');
-    } finally {
-      setUrlLoading(false);
-    }
+  // Open paste tab with optional link reference
+  const handleUseUrlAndPaste = () => {
+    setActiveInputTab('paste');
   };
 
   const handleSelectSample = (sample: SampleResearch) => {
@@ -337,45 +308,58 @@ export const InputTabs: React.FC<InputTabsProps> = ({
           </div>
         )}
 
-        {/* 3. Link Tab */}
+        {/* 3. Link Tab (Pure Client-Side Copy/Paste) */}
         {activeInputTab === 'link' && (
-          <div className="space-y-3">
-            <p className="text-xs text-slate-600">
-              أدخل رابط مقال علمي، منشور ArXiv، أو صفحة ورقة بحثية لجلب النص وتحليله آلياً:
-            </p>
-            <div className="flex gap-2">
+          <div className="space-y-4">
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs sm:text-sm text-slate-700 leading-relaxed">
+              لتحليل بحث منشور على الإنترنت مباشرة من المتصفح، ضع الرابط هنا للفتح السريع ثم انسخ نص البحث وألصقه في الصندوق أدناه:
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-2">
               <input
                 type="url"
                 value={urlInput}
                 onChange={(e) => setUrlInput(e.target.value)}
-                placeholder="https://example.org/paper-abstract"
-                className="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-teal-600 transition"
+                placeholder="https://example.org/research-paper (اختياري)"
+                dir="ltr"
+                className="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-teal-600 transition text-left"
               />
-              <button
-                onClick={handleFetchUrl}
-                disabled={urlLoading || !urlInput.trim()}
-                className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white text-xs sm:text-sm font-bold transition flex items-center gap-2 shrink-0"
-              >
-                {urlLoading ? (
-                  <>
-                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <span>جاري الجلب...</span>
-                  </>
-                ) : (
-                  <>
-                    <Link2 className="w-4 h-4" />
-                    <span>جلب النص</span>
-                  </>
-                )}
-              </button>
+              {urlInput.trim().startsWith('http') && (
+                <a
+                  href={urlInput.trim()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs sm:text-sm font-bold transition inline-flex items-center justify-center gap-2 shrink-0"
+                >
+                  <span>فتح الرابط للنسخ</span>
+                  <ExternalLink className="w-4 h-4" />
+                </a>
+              )}
             </div>
 
-            {urlError && (
-              <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-                <span>{urlError}</span>
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-slate-700">
+                الصق نص البحث المنسوخ من الرابط هنا:
+              </label>
+              <textarea
+                value={text}
+                onChange={(e) => onChangeText(e.target.value)}
+                placeholder="انسخ محتوى البحث من الصفحة (Ctrl+A ثم Ctrl+C) وألصقه هنا مباشرة..."
+                className="w-full min-h-[160px] p-4 bg-slate-50/70 border border-slate-200 rounded-xl text-slate-800 text-sm leading-relaxed focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-teal-600 transition placeholder:text-slate-400 resize-y"
+              />
+              <div className="flex items-center justify-between text-xs text-slate-500">
+                <span>عدد الكلمات الملصوقة: <b className="text-slate-800">{wordCount.toLocaleString()}</b></span>
+                {text && (
+                  <button
+                    type="button"
+                    onClick={handleUseUrlAndPaste}
+                    className="text-teal-700 hover:underline font-bold"
+                  >
+                    عرض في محرر النص
+                  </button>
+                )}
               </div>
-            )}
+            </div>
           </div>
         )}
       </div>
