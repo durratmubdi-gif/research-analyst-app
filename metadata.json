@@ -1,0 +1,6 @@
+{
+  "name": "محلل الأبحاث الأكاديمية الذكي",
+  "description": "منصة ذكية لتحليل الأبحاث والأوراق العلمية بالذكاء الاصطناعي Gemini: تلخيص تنفيذي، تفكيك المنهجية، استخراج النتائج، نقد منهجي، وأسئلة مناقشة تفاعلية.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
