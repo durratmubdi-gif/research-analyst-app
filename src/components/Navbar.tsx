@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookOpen, Sparkles, Bookmark, RotateCcw, FileText, Printer } from 'lucide-react';
+import { BookOpen, Sparkles, Bookmark, RotateCcw, Printer, Key } from 'lucide-react';
 
 interface NavbarProps {
   savedCount: number;
@@ -7,6 +7,9 @@ interface NavbarProps {
   onReset: () => void;
   hasResults: boolean;
   onPrint: () => void;
+  onOpenKeyPage: () => void;
+  hasApiKey: boolean;
+  isKeyPage: boolean;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -15,6 +18,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   onReset,
   hasResults,
   onPrint,
+  onOpenKeyPage,
+  hasApiKey,
+  isKeyPage,
 }) => {
   return (
     <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-200/80 shadow-xs no-print">
@@ -54,6 +60,19 @@ export const Navbar: React.FC<NavbarProps> = ({
           )}
 
           <button
+            onClick={onOpenKeyPage}
+            title="إدارة مفتاح Gemini API"
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold border transition ${
+              isKeyPage
+                ? 'bg-slate-900 text-white border-slate-900'
+                : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200'
+            }`}
+          >
+            <Key className={`w-3.5 h-3.5 ${hasApiKey ? 'text-emerald-600' : 'text-amber-600'}`} />
+            <span className="hidden sm:inline">صفحة المفتاح</span>
+          </button>
+
+          <button
             onClick={onOpenSaved}
             className="relative inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200/80 text-slate-800 text-xs sm:text-sm font-semibold transition"
           >
@@ -66,7 +85,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             )}
           </button>
 
-          {hasResults && (
+          {hasResults && !isKeyPage && (
             <button
               onClick={onReset}
               className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 text-xs sm:text-sm font-medium transition"

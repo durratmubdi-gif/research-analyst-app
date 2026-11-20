@@ -11,12 +11,11 @@ import { DefenseQuestionsSection } from './components/DefenseQuestionsSection';
 import { ActionPlanSection } from './components/ActionPlanSection';
 import { PaperChatDrawer } from './components/PaperChatDrawer';
 import { SavedLibraryModal } from './components/SavedLibraryModal';
-import { ApiKeyCard } from './components/ApiKeyCard';
+import { KeyPage } from './components/KeyPage';
 import {
   analyzeResearchWithGemini,
   getStoredApiKey,
   saveApiKey,
-  clearStoredApiKey,
 } from './services/geminiClient';
 import {
   AnalysisResult,
@@ -35,13 +34,9 @@ import {
 } from './utils/exporter';
 import {
   Sparkles,
-  BookOpen,
-  Layers,
-  Award,
   AlertCircle,
-  FileCheck,
-  CheckCircle2,
   RefreshCw,
+  Key,
 } from 'lucide-react';
 
 export default function App() {
@@ -56,22 +51,37 @@ export default function App() {
   const [isSavedModalOpen, setIsSavedModalOpen] = useState<boolean>(false);
   const [isCurrentSaved, setIsCurrentSaved] = useState<boolean>(false);
   const [apiKey, setApiKey] = useState<string>(() => getStoredApiKey());
+  const [isKeyPage, setIsKeyPage] = useState<boolean>(() => window.location.hash === '#/key');
 
-  // Load saved list on mount
+  // Load saved list on mount & listen to hash navigation
   useEffect(() => {
     const loaded = getSavedResearches();
     setSavedList(loaded);
+
+    const handleHashChange = () => {
+      setIsKeyPage(window.location.hash === '#/key');
+      setApiKey(getStoredApiKey());
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
+
+  const openKeyPage = () => {
+    window.location.hash = '#/key';
+    setIsKeyPage(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const closeKeyPage = () => {
+    window.location.hash = '';
+    setIsKeyPage(false);
+    setApiKey(getStoredApiKey());
+  };
 
   const handleSaveApiKey = (key: string) => {
     saveApiKey(key);
     setApiKey(key.trim());
     if (errorMessage) setErrorMessage(null);
-  };
-
-  const handleClearApiKey = () => {
-    clearStoredApiKey();
-    setApiKey('');
   };
 
   const metrics = calculateTextMetrics(text);
@@ -82,8 +92,7 @@ export default function App() {
     if (!canAnalyze || isLoading) return;
 
     if (!apiKey.trim()) {
-      setErrorMessage('الرجاء إدخال مفتاح Gemini API وحفظه في البطاقة أعلاه قبل بدء التحليل.');
-      document.getElementById('api-key-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setErrorMessage('لم يتم إدخال مفتاح Gemini API بعد. افتح صفحة المفتاح لإدخاله وحفظه.');
       return;
     }
 
@@ -203,74 +212,93 @@ export default function App() {
       <Navbar
         savedCount={savedList.length}
         onOpenSaved={() => setIsSavedModalOpen(true)}
-        onReset={handleReset}
+        onReset={() => {
+          closeKeyPage();
+          handleReset();
+        }}
         hasResults={!!analysisResult}
         onPrint={handlePrint}
+        onOpenKeyPage={openKeyPage}
+        hasApiKey={Boolean(apiKey.trim())}
+        isKeyPage={isKeyPage}
       />
 
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
-        {/* Hero Section */}
-        <div className="text-center space-y-3 pt-2 pb-4 no-print">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 text-teal-300 text-xs font-bold shadow-xs">
-            <Sparkles className="w-3.5 h-3.5 text-teal-300 animate-pulse" />
-            <span>الجيل الرابع من الذكاء الاصطناعي الأكاديمي</span>
-          </div>
-
-          <h2 className="text-2xl sm:text-4xl font-black text-slate-900 tracking-tight leading-tight">
-            محلل الأبحاث والدراسات العلمية
-          </h2>
-
-          <p className="text-slate-600 text-sm sm:text-base max-w-2xl mx-auto leading-relaxed">
-            الصق بحثك، ارفع ملف PDF كاملاً، أو حلل عبر رابط: نستخرج لك الملخص التنفيذي، نفكك
-            المنهجية والعينات، نرصد نقاط القوة والضعف، ونحاكي أسئلة لجنة المناقشة الأكاديمية.
-          </p>
-        </div>
-
-        {/* API Key Settings Card (localStorage) */}
-        <ApiKeyCard
-          apiKey={apiKey}
-          onSaveKey={handleSaveApiKey}
-          onClearKey={handleClearApiKey}
-        />
-
-        {/* Input & Upload Controls */}
-        <div className="space-y-4 no-print">
-          <InputTabs
-            text={text}
-            onChangeText={(val) => {
-              setText(val);
-              if (errorMessage) setErrorMessage(null);
-            }}
-            onClear={() => {
-              setText('');
-              setAnalysisResult(null);
-            }}
-            onAnalyze={handleAnalyze}
-            isLoading={isLoading}
-            activeInputTab={activeInputTab}
-            setActiveInputTab={setActiveInputTab}
+        {isKeyPage ? (
+          <KeyPage
+            apiKey={apiKey}
+            onSaveKey={handleSaveApiKey}
+            onBack={closeKeyPage}
           />
+        ) : (
+          <>
+            {/* Hero Section */}
+            <div className="text-center space-y-3 pt-2 pb-4 no-print">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 text-teal-300 text-xs font-bold shadow-xs">
+                <Sparkles className="w-3.5 h-3.5 text-teal-300 animate-pulse" />
+                <span>الجيل الرابع من الذكاء الاصطناعي الأكاديمي</span>
+              </div>
 
-          <AnalysisControls
-            mode={analysisMode}
-            onChangeMode={setAnalysisMode}
-            onAnalyze={handleAnalyze}
-            isLoading={isLoading}
-            canAnalyze={canAnalyze}
-            loadingStepText={loadingStepText}
-          />
-        </div>
+              <h2 className="text-2xl sm:text-4xl font-black text-slate-900 tracking-tight leading-tight">
+                محلل الأبحاث والدراسات العلمية
+              </h2>
 
-        {/* Error Notification */}
-        {errorMessage && (
-          <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-900 text-sm flex items-start gap-3 shadow-xs animate-shake no-print">
-            <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <b className="font-bold block">تعذر إكمال التحليل الأكاديمي</b>
-              <p className="text-rose-700 mt-0.5">{errorMessage}</p>
+              <p className="text-slate-600 text-sm sm:text-base max-w-2xl mx-auto leading-relaxed">
+                الصق بحثك، ارفع ملف PDF كاملاً، أو حلل عبر رابط: نستخرج لك الملخص التنفيذي، نفكك
+                المنهجية والعينات، نرصد نقاط القوة والضعف، ونحاكي أسئلة لجنة المناقشة الأكاديمية.
+              </p>
             </div>
-          </div>
-        )}
+
+            {/* Input & Upload Controls */}
+            <div className="space-y-4 no-print">
+              <InputTabs
+                text={text}
+                onChangeText={(val) => {
+                  setText(val);
+                  if (errorMessage) setErrorMessage(null);
+                }}
+                onClear={() => {
+                  setText('');
+                  setAnalysisResult(null);
+                }}
+                onAnalyze={handleAnalyze}
+                isLoading={isLoading}
+                activeInputTab={activeInputTab}
+                setActiveInputTab={setActiveInputTab}
+              />
+
+              <AnalysisControls
+                mode={analysisMode}
+                onChangeMode={setAnalysisMode}
+                onAnalyze={handleAnalyze}
+                isLoading={isLoading}
+                canAnalyze={canAnalyze}
+                loadingStepText={loadingStepText}
+              />
+            </div>
+
+            {/* Error Notification */}
+            {errorMessage && (
+              <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-900 text-sm flex items-start justify-between gap-3 shadow-xs animate-shake no-print flex-wrap">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+                  <div>
+                    <b className="font-bold block">تعذر إكمال التحليل الأكاديمي</b>
+                    <p className="text-rose-700 mt-0.5">{errorMessage}</p>
+                  </div>
+                </div>
+                {!apiKey.trim() && (
+                  <button
+                    type="button"
+                    onClick={openKeyPage}
+                    className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-teal-900 text-white text-xs font-bold transition inline-flex items-center gap-1.5 shrink-0"
+                  >
+                    <Key className="w-3.5 h-3.5" />
+                    <span>الذهاب إلى صفحة المفتاح</span>
+                  </button>
+                )}
+              </div>
+            )}
 
         {/* Loading Card with academic skeleton */}
         {isLoading && (
@@ -345,6 +373,8 @@ export default function App() {
               apiKey={apiKey}
             />
           </div>
+        )}
+          </>
         )}
       </main>
 

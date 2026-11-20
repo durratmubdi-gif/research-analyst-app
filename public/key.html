@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>مفتاح Gemini API</title>
+  <style>
+    * { box-sizing: border-box; font-family: 'Cairo', 'Tajawal', Arial, sans-serif; }
+    body { margin: 0; background: #F8FAFC; color: #1E293B; min-height: 100vh; }
+    #protected-content { display: none; }
+    .center-screen {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      min-height: 100vh; padding: 16px;
+    }
+    .card {
+      background: #fff; border-radius: 16px; padding: 28px; width: 100%; max-width: 460px;
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08); border: 1px solid #E2E8F0;
+    }
+    .btn {
+      border: none; border-radius: 12px; padding: 12px 18px; font-weight: 700; cursor: pointer;
+      font-size: 14px; transition: 0.2s;
+    }
+    .btn-primary { background: #0F172A; color: #fff; width: 100%; }
+    .btn-primary:hover { background: #134E4A; }
+    .btn-ghost { background: #F1F5F9; color: #334155; text-decoration: none; display: inline-block; text-align: center; }
+    input[type="password"] {
+      width: 100%; padding: 12px 14px; border: 1px solid #CBD5E1; border-radius: 12px;
+      font-size: 14px; direction: ltr; text-align: left; outline: none; margin: 10px 0 14px;
+    }
+    input:focus { border-color: #0D9488; box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15); }
+    .denied-box { text-align: center; }
+    .denied-box h2 { color: #c00; margin: 0 0 10px; font-size: 20px; }
+    .denied-box p { color: #666; margin: 0 0 18px; line-height: 1.7; font-size: 14px; }
+    .status { font-size: 13px; font-weight: 700; margin-top: 12px; color: #0F766E; text-align: center; }
+  </style>
+  <script>
+    // حماية صفحة المفتاح — إخفاء المحتوى بالكامل حتى إدخال الرقم السري الصحيح
+    var PAGE_PASSWORD = "Aakkmm@2013";
+    var STORAGE_KEY = "key_page_authorized";
+    document.documentElement.style.visibility = "hidden";
+  </script>
+</head>
+<body>
+  <!-- بوابة التحقق تظهر قبل أي محتوى -->
+  <div id="gate-screen" class="center-screen">
+    <div class="card">
+      <div id="gate-form-box">
+        <h2 style="margin:0 0 8px;font-size:18px;color:#0F172A;">⚠️ صفحة المفتاح محمية</h2>
+        <p style="margin:0 0 12px;font-size:13px;color:#64748B;">أدخل الرقم السري للوصول:</p>
+        <form id="pass-form">
+          <input type="password" id="pass-input" placeholder="أدخل الرقم السري..." autocomplete="off" required />
+          <button type="submit" class="btn btn-primary">دخول</button>
+        </form>
+      </div>
+
+      <div id="denied-box" class="denied-box" style="display:none;">
+        <h2>🚫 غير مصرح بالوصول</h2>
+        <p>الرقم السري غير صحيح.<br>لا يمكن عرض محتوى هذه الصفحة بدون الرقم السري الصحيح.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- المحتوى الحقيقي مخفي تماماً افتراضياً: فقط حقل المفتاح وزر الحفظ -->
+  <main id="protected-content" class="center-screen">
+    <div class="card">
+      <form id="key-form">
+        <input type="password" id="api-key-input" placeholder="أدخل مفتاح Gemini هنا..." />
+        <button type="submit" class="btn btn-primary">حفظ المفتاح</button>
+      </form>
+      <p id="key-status" class="status"></p>
+    </div>
+  </main>
+
+  <script>
+    (function () {
+      var gateScreen = document.getElementById("gate-screen");
+      var gateFormBox = document.getElementById("gate-form-box");
+      var deniedBox = document.getElementById("denied-box");
+      var protectedContent = document.getElementById("protected-content");
+      var passForm = document.getElementById("pass-form");
+      var passInput = document.getElementById("pass-input");
+
+      function unlockPage() {
+        gateScreen.style.display = "none";
+        protectedContent.style.display = "flex";
+        document.documentElement.style.visibility = "visible";
+        loadKeyUI();
+      }
+
+      if (sessionStorage.getItem(STORAGE_KEY) === "yes") {
+        unlockPage();
+      } else {
+        document.documentElement.style.visibility = "visible";
+      }
+
+      passForm.addEventListener("submit", function (e) {
+        e.preventDefault();
+        if (passInput.value === PAGE_PASSWORD) {
+          sessionStorage.setItem(STORAGE_KEY, "yes");
+          unlockPage();
+        } else {
+          protectedContent.remove();
+          gateFormBox.style.display = "none";
+          deniedBox.style.display = "block";
+        }
+      });
+
+      function loadKeyUI() {
+        var keyInput = document.getElementById("api-key-input");
+        var keyForm = document.getElementById("key-form");
+        var statusEl = document.getElementById("key-status");
+
+        var saved = localStorage.getItem("gemini_api_key") || "";
+        keyInput.value = saved;
+
+        keyForm.addEventListener("submit", function (e) {
+          e.preventDefault();
+          var val = keyInput.value.trim();
+          if (!val) {
+            statusEl.textContent = "الرجاء إدخال المفتاح أولاً";
+            return;
+          }
+          localStorage.setItem("gemini_api_key", val);
+          statusEl.textContent = "تم حفظ المفتاح بنجاح ✅";
+        });
+      }
+    })();
+  </script>
+</body>
+</html>
