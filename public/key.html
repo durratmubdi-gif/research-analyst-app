@@ -33,9 +33,8 @@
     .status { font-size: 13px; font-weight: 700; margin-top: 12px; color: #0F766E; text-align: center; }
   </style>
   <script>
-    // حماية مستمرة: إخفاء المحتوى بالكامل عند كل تحميل أو فتح للصفحة حتى إدخال الرقم السري الصحيح
     var PAGE_PASSWORD = "Aakkmm@2013";
-    try { sessionStorage.removeItem("key_page_authorized"); } catch (e) {}
+    var STORAGE_KEY = "key_authorized";
     document.documentElement.style.visibility = "hidden";
   </script>
 </head>
@@ -44,8 +43,7 @@
   <div id="gate-screen" class="center-screen">
     <div class="card">
       <div id="gate-form-box">
-        <h2 style="margin:0 0 8px;font-size:18px;color:#0F172A;">⚠️ صفحة المفتاح محمية</h2>
-        <p style="margin:0 0 12px;font-size:13px;color:#64748B;">أدخل الرقم السري للوصول:</p>
+        <h2 style="margin:0 0 8px;font-size:18px;color:#0F172A;">⚠️ أدخل الرقم السري للدخول:</h2>
         <form id="pass-form">
           <input type="password" id="pass-input" placeholder="أدخل الرقم السري..." autocomplete="off" required />
           <button type="submit" class="btn btn-primary">دخول</button>
@@ -54,7 +52,7 @@
 
       <div id="denied-box" class="denied-box" style="display:none;">
         <h2>🚫 غير مصرح بالوصول</h2>
-        <p>الرقم السري غير صحيح.<br>لا يمكن عرض محتوى هذه الصفحة بدون الرقم السري الصحيح.</p>
+        <p>الرقم السري غير صحيح</p>
       </div>
     </div>
   </div>
@@ -80,14 +78,24 @@
       var passForm = document.getElementById("pass-form");
       var passInput = document.getElementById("pass-input");
 
-      document.documentElement.style.visibility = "visible";
+      function unlockPage() {
+        gateScreen.style.display = "none";
+        protectedContent.style.display = "flex";
+        document.documentElement.style.visibility = "visible";
+        loadKeyUI();
+      }
+
+      if (sessionStorage.getItem(STORAGE_KEY) === "yes") {
+        unlockPage();
+      } else {
+        document.documentElement.style.visibility = "visible";
+      }
 
       passForm.addEventListener("submit", function (e) {
         e.preventDefault();
         if (passInput.value === PAGE_PASSWORD) {
-          gateScreen.style.display = "none";
-          protectedContent.style.display = "flex";
-          loadKeyUI();
+          sessionStorage.setItem(STORAGE_KEY, "yes");
+          unlockPage();
         } else {
           protectedContent.remove();
           gateFormBox.style.display = "none";

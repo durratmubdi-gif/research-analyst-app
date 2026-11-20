@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Key,
   Lock,
@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 
 const PAGE_PASSWORD = 'Aakkmm@2013';
+const STORAGE_KEY = 'key_authorized';
 
 interface KeyPageProps {
   onSaveKey: (key: string) => void;
@@ -17,25 +18,27 @@ export const KeyPage: React.FC<KeyPageProps> = ({
   onSaveKey,
   onBack,
 }) => {
-  // Always require passcode on every mount / page load (in-memory state only)
-  const [isAuthorized, setIsAuthorized] = useState<boolean>(false);
+  const [isAuthorized, setIsAuthorized] = useState<boolean>(() => {
+    try {
+      return sessionStorage.getItem(STORAGE_KEY) === 'yes';
+    } catch {
+      return false;
+    }
+  });
   const [accessDenied, setAccessDenied] = useState<boolean>(false);
   const [passwordInput, setPasswordInput] = useState<string>('');
 
   const [inputValue, setInputValue] = useState<string>('');
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    try {
-      sessionStorage.removeItem('key_page_authorized');
-    } catch {
-      // ignore storage errors
-    }
-  }, []);
-
   const handleUnlock = (e: React.FormEvent) => {
     e.preventDefault();
     if (passwordInput === PAGE_PASSWORD) {
+      try {
+        sessionStorage.setItem(STORAGE_KEY, 'yes');
+      } catch {
+        // ignore storage restrictions
+      }
       setAccessDenied(false);
       setIsAuthorized(true);
       setPasswordInput('');
@@ -70,9 +73,7 @@ export const KeyPage: React.FC<KeyPageProps> = ({
             🚫 غير مصرح بالوصول
           </h2>
           <p className="text-sm text-slate-600 leading-relaxed">
-            الرقم السري غير صحيح.
-            <br />
-            لا يمكن عرض محتوى هذه الصفحة بدون الرقم السري الصحيح.
+            الرقم السري غير صحيح
           </p>
           <div className="pt-2">
             <button
