@@ -2,14 +2,16 @@ import React from 'react';
 import { ShieldCheck, AlertTriangle, CheckCircle2, AlertCircle } from 'lucide-react';
 
 interface StrengthsAndWeaknessesSectionProps {
-  strengths: string[];
-  weaknesses: string[];
+  strengths?: string[];
+  weaknesses?: string[];
 }
 
 export const StrengthsAndWeaknessesSection: React.FC<StrengthsAndWeaknessesSectionProps> = ({
   strengths,
   weaknesses,
 }) => {
+  const safeStrengths = Array.isArray(strengths) ? strengths : [];
+  const safeWeaknesses = Array.isArray(weaknesses) ? weaknesses : [];
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
       {/* Strengths Card */}
@@ -29,8 +31,8 @@ export const StrengthsAndWeaknessesSection: React.FC<StrengthsAndWeaknessesSecti
         </div>
 
         <div className="space-y-3">
-          {strengths && strengths.length > 0 ? (
-            strengths.map((str, idx) => (
+          {safeStrengths.length > 0 ? (
+            safeStrengths.map((str, idx) => (
               <div
                 key={idx}
                 className="p-3.5 rounded-xl bg-emerald-50/50 border border-emerald-100 flex items-start gap-3"
@@ -64,8 +66,8 @@ export const StrengthsAndWeaknessesSection: React.FC<StrengthsAndWeaknessesSecti
         </div>
 
         <div className="space-y-3">
-          {weaknesses && weaknesses.length > 0 ? (
-            weaknesses.map((weak, idx) => (
+          {safeWeaknesses.length > 0 ? (
+            safeWeaknesses.map((weak, idx) => (
               <div
                 key={idx}
                 className="p-3.5 rounded-xl bg-amber-50/50 border border-amber-200/60 flex items-start gap-3"

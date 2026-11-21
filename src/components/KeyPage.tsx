@@ -11,15 +11,13 @@ const STORAGE_KEY = 'key_authorized';
 
 interface KeyPageProps {
   hasOpenAiKey: boolean;
-  hasGeminiKey: boolean;
-  onSaveKeys: (keys: { openaiKey?: string; geminiKey?: string }) => void;
+  onSaveOpenAiKey: (key: string) => void;
   onBack: () => void;
 }
 
 export const KeyPage: React.FC<KeyPageProps> = ({
   hasOpenAiKey,
-  hasGeminiKey,
-  onSaveKeys,
+  onSaveOpenAiKey,
   onBack,
 }) => {
   const [isAuthorized, setIsAuthorized] = useState<boolean>(() => {
@@ -33,7 +31,6 @@ export const KeyPage: React.FC<KeyPageProps> = ({
   const [passwordInput, setPasswordInput] = useState<string>('');
 
   const [openAiInput, setOpenAiInput] = useState<string>('');
-  const [geminiInput, setGeminiInput] = useState<string>('');
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
   const handleUnlock = (e: React.FormEvent) => {
@@ -56,22 +53,17 @@ export const KeyPage: React.FC<KeyPageProps> = ({
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmedOpenAi = openAiInput.trim();
-    const trimmedGemini = geminiInput.trim();
-    if (!trimmedOpenAi && !trimmedGemini) {
-      setStatusMessage('الرجاء إدخال مفتاح واحد على الأقل قبل الحفظ');
+    if (!trimmedOpenAi) {
+      setStatusMessage('الرجاء إدخال المفتاح أولاً قبل الحفظ');
       return;
     }
-    onSaveKeys({
-      openaiKey: trimmedOpenAi || undefined,
-      geminiKey: trimmedGemini || undefined,
-    });
+    onSaveOpenAiKey(trimmedOpenAi);
     setOpenAiInput('');
-    setGeminiInput('');
-    setStatusMessage('تم حفظ المفاتيح بنجاح ✅');
+    setStatusMessage('تم حفظ المفتاح بنجاح ✅');
     setTimeout(() => setStatusMessage(null), 2500);
   };
 
-  // 1. Wrong password: show access denied ONLY, hide all page content & keys
+  // 1. Wrong password: show access denied ONLY, hide all page content & key
   if (!isAuthorized && accessDenied) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center p-4">
@@ -100,7 +92,7 @@ export const KeyPage: React.FC<KeyPageProps> = ({
     );
   }
 
-  // 2. Before authorization: key fields & save button are completely hidden until passcode entered
+  // 2. Before authorization: key field & save button are completely hidden until passcode entered
   if (!isAuthorized) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center p-4">
@@ -111,7 +103,7 @@ export const KeyPage: React.FC<KeyPageProps> = ({
             </div>
             <h2 className="text-lg font-extrabold">⚠️ صفحة المفتاح محمية</h2>
             <p className="text-xs text-slate-300">
-              المحتوى والمفاتيح مخفيان تماماً حتى إدخال الرقم السري الصحيح
+              المحتوى والمفتاح مخفيان تماماً حتى إدخال الرقم السري الصحيح
             </p>
           </div>
 
@@ -160,7 +152,7 @@ export const KeyPage: React.FC<KeyPageProps> = ({
     );
   }
 
-  // 3. Authorized: ONLY key fields (OpenAI + Gemini) + save button (no external links)
+  // 3. Authorized: OpenAI key input + save button only (Gemini runs server-side via environment secret)
   return (
     <div className="max-w-lg mx-auto py-8 space-y-5">
       <div>
@@ -180,7 +172,7 @@ export const KeyPage: React.FC<KeyPageProps> = ({
             <Key className="w-4 h-4" />
           </div>
           <h2 className="font-extrabold text-slate-900 text-base sm:text-lg">
-            إعدادات مفاتيح API
+            مفتاح OpenAI API
           </h2>
         </div>
 
@@ -199,28 +191,7 @@ export const KeyPage: React.FC<KeyPageProps> = ({
               type="password"
               value={openAiInput}
               onChange={(e) => setOpenAiInput(e.target.value)}
-              placeholder="أدخل مفتاح OpenAI (OPENAI_API_KEY) هنا..."
-              autoComplete="off"
-              dir="ltr"
-              className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-sm font-mono focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-teal-600 transition text-left"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <label htmlFor="gemini-key-field" className="text-sm font-bold text-slate-800">
-                مفتاح Gemini API (لتحليل الملفات والصور)
-              </label>
-              {hasGeminiKey && (
-                <span className="text-[11px] font-bold text-emerald-700">محفوظ ✓</span>
-              )}
-            </div>
-            <input
-              id="gemini-key-field"
-              type="password"
-              value={geminiInput}
-              onChange={(e) => setGeminiInput(e.target.value)}
-              placeholder="أدخل مفتاح Gemini (GEMINI_API_KEY) هنا..."
+              placeholder="أدخل مفتاح OpenAI هنا..."
               autoComplete="off"
               dir="ltr"
               className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-sm font-mono focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-teal-600 transition text-left"
@@ -231,7 +202,7 @@ export const KeyPage: React.FC<KeyPageProps> = ({
             type="submit"
             className="w-full py-3 px-5 rounded-xl bg-slate-900 hover:bg-teal-900 text-white text-sm font-bold transition"
           >
-            حفظ المفاتيح
+            حفظ المفتاح
           </button>
 
           {statusMessage && (

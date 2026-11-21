@@ -4,6 +4,7 @@ import {
   buildAiDetectionUserPrompt,
   normalizeAiDetectionResult,
 } from '../utils/aiDetectionPrompt';
+import { normalizeAnalysisResult } from '../utils/normalizeAnalysis';
 
 const OPENAI_KEY_STORAGE_KEY = 'openai_api_key';
 const OPENAI_MODEL = 'gpt-4o';
@@ -146,7 +147,7 @@ ${text.slice(0, 35000)}
   }
 
   try {
-    return JSON.parse(rawText) as AnalysisResult;
+    return normalizeAnalysisResult(JSON.parse(rawText));
   } catch {
     throw new Error('تعذر تحليل بنية الاستجابة من GPT-4o. يرجى المحاولة مرة أخرى.');
   }

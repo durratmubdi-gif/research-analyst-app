@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 
 interface ActionPlanSectionProps {
-  actionPlan: string[];
+  actionPlan?: string[];
   presentationPitch?: string;
   onSave: () => void;
   onDownload: () => void;
@@ -29,6 +29,7 @@ export const ActionPlanSection: React.FC<ActionPlanSectionProps> = ({
   onPrint,
   isSaved,
 }) => {
+  const safeActionPlan = Array.isArray(actionPlan) ? actionPlan : [];
   const [copiedAll, setCopiedAll] = useState(false);
 
   const handleCopy = () => {
@@ -79,8 +80,8 @@ export const ActionPlanSection: React.FC<ActionPlanSectionProps> = ({
         </div>
 
         <div className="space-y-3">
-          {actionPlan && actionPlan.length > 0 ? (
-            actionPlan.map((step, idx) => (
+          {safeActionPlan.length > 0 ? (
+            safeActionPlan.map((step, idx) => (
               <div
                 key={idx}
                 className="p-3.5 rounded-xl bg-slate-50/70 border border-slate-200/80 flex items-start gap-3"

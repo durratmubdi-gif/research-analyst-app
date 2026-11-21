@@ -2,14 +2,15 @@ import React, { useState } from 'react';
 import { CheckCircle2, TrendingUp, Copy, Check } from 'lucide-react';
 
 interface FindingsSectionProps {
-  findings: string[];
+  findings?: string[];
 }
 
 export const FindingsSection: React.FC<FindingsSectionProps> = ({ findings }) => {
+  const safeFindings = Array.isArray(findings) ? findings : [];
   const [copied, setCopied] = useState(false);
 
   const handleCopyFindings = () => {
-    navigator.clipboard.writeText(findings.map((f, i) => `${i + 1}. ${f}`).join('\n\n'));
+    navigator.clipboard.writeText(safeFindings.map((f, i) => `${i + 1}. ${f}`).join('\n\n'));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -51,8 +52,8 @@ export const FindingsSection: React.FC<FindingsSectionProps> = ({ findings }) =>
       </div>
 
       <div className="space-y-3">
-        {findings && findings.length > 0 ? (
-          findings.map((finding, idx) => (
+        {safeFindings.length > 0 ? (
+          safeFindings.map((finding, idx) => (
             <div
               key={idx}
               className="p-4 rounded-xl bg-slate-50/70 border border-slate-200/80 hover:border-emerald-300 hover:bg-emerald-50/20 transition flex items-start gap-3.5"

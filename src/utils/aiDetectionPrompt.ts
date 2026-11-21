@@ -1,4 +1,4 @@
-import { AiDetectionResult, AiDetectionVerdict } from '../types/research';
+import type { AiDetectionResult, AiDetectionVerdict } from '../types/research.ts';
 
 export const AI_DETECTION_SYSTEM_PROMPT = `You are an AI-text detector.
 

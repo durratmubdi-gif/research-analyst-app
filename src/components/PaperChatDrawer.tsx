@@ -17,7 +17,6 @@ interface PaperChatDrawerProps {
   paperTitle: string;
   provider: 'openai' | 'gemini';
   openAiKey: string;
-  geminiKey: string;
   inlineData?: InlineFileData;
 }
 
@@ -26,7 +25,6 @@ export const PaperChatDrawer: React.FC<PaperChatDrawerProps> = ({
   paperTitle,
   provider,
   openAiKey,
-  geminiKey,
   inlineData,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -86,7 +84,6 @@ export const PaperChatDrawer: React.FC<PaperChatDrawerProps> = ({
               researchText,
               questionToSend,
               chatHistory,
-              geminiKey,
               inlineData
             )
           : await chatAboutResearchWithOpenAI(

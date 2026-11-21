@@ -21,15 +21,16 @@ export const ExecutiveSummarySection: React.FC<ExecutiveSummarySectionProps> = (
   const [copiedSummary, setCopiedSummary] = useState(false);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
 
+  const speechSupported = typeof window !== 'undefined' && 'speechSynthesis' in window;
+
   const handleCopySummary = () => {
-    navigator.clipboard.writeText(summary);
+    navigator.clipboard.writeText(summary || '');
     setCopiedSummary(true);
     setTimeout(() => setCopiedSummary(false), 2000);
   };
 
   const handleToggleAudio = () => {
-    if (!('speechSynthesis' in window)) {
-      alert('ميزة القراءة الصوتية غير مدعومة في متصفحك.');
+    if (!speechSupported || !summary) {
       return;
     }
 

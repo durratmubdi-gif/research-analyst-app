@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { DefenseQuestion } from '../types/research';
 import {
-  HelpCircle,
   MessageSquare,
   Shield,
   ChevronDown,
@@ -12,25 +11,24 @@ import {
 } from 'lucide-react';
 
 interface DefenseQuestionsSectionProps {
-  questions: DefenseQuestion[];
+  questions?: DefenseQuestion[];
 }
 
 export const DefenseQuestionsSection: React.FC<DefenseQuestionsSectionProps> = ({
   questions,
 }) => {
+  const safeQuestions = Array.isArray(questions) ? questions : [];
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
-  const [expandedIndices, setExpandedIndices] = useState<number[]>(
-    questions.map((_, i) => i) // Default all expanded for ease of reading
-  );
+  const [collapsedIndices, setCollapsedIndices] = useState<number[]>([]);
 
   const toggleExpand = (idx: number) => {
-    setExpandedIndices((prev) =>
+    setCollapsedIndices((prev) =>
       prev.includes(idx) ? prev.filter((i) => i !== idx) : [...prev, idx]
     );
   };
 
   const handleCopy = (text: string, idx: number) => {
-    navigator.clipboard.writeText(text);
+    navigator.clipboard.writeText(text || '');
     setCopiedIdx(idx);
     setTimeout(() => setCopiedIdx(null), 2000);
   };
@@ -52,14 +50,14 @@ export const DefenseQuestionsSection: React.FC<DefenseQuestionsSectionProps> = (
           </div>
         </div>
         <span className="text-xs font-bold px-3 py-1 rounded-full bg-indigo-50 text-indigo-800 border border-indigo-200">
-          {questions?.length || 0} أسئلة محورية
+          {safeQuestions.length} أسئلة محورية
         </span>
       </div>
 
       <div className="space-y-4">
-        {questions && questions.length > 0 ? (
-          questions.map((item, idx) => {
-            const isExpanded = expandedIndices.includes(idx);
+        {safeQuestions.length > 0 ? (
+          safeQuestions.map((item, idx) => {
+            const isExpanded = !collapsedIndices.includes(idx);
             return (
               <div
                 key={idx}
@@ -76,9 +74,9 @@ export const DefenseQuestionsSection: React.FC<DefenseQuestionsSectionProps> = (
                     </span>
                     <div>
                       <h4 className="font-bold text-slate-900 text-sm sm:text-base leading-snug">
-                        {item.question}
+                        {item?.question}
                       </h4>
-                      {item.context && (
+                      {item?.context && (
                         <p className="text-xs text-slate-500 mt-1 flex items-center gap-1.5">
                           <Lightbulb className="w-3.5 h-3.5 text-amber-500 shrink-0" />
                           <span>ما يختبره المحكم: {item.context}</span>
@@ -106,7 +104,8 @@ export const DefenseQuestionsSection: React.FC<DefenseQuestionsSectionProps> = (
                       </span>
 
                       <button
-                        onClick={() => handleCopy(item.recommendedAnswer, idx)}
+                        type="button"
+                        onClick={() => handleCopy(item?.recommendedAnswer || '', idx)}
                         className="text-xs font-semibold text-slate-500 hover:text-indigo-800 flex items-center gap-1 transition"
                       >
                         {copiedIdx === idx ? (
@@ -124,7 +123,7 @@ export const DefenseQuestionsSection: React.FC<DefenseQuestionsSectionProps> = (
                     </div>
 
                     <div className="text-xs sm:text-sm text-slate-800 leading-relaxed bg-white p-3.5 rounded-xl border border-indigo-100 shadow-2xs whitespace-pre-line font-normal">
-                      {item.recommendedAnswer}
+                      {item?.recommendedAnswer || 'لا توجد إجابة مقترحة لهذا السؤال.'}
                     </div>
                   </div>
                 )}

@@ -16,8 +16,6 @@ import { AiDetectionSection } from './components/AiDetectionSection';
 import {
   analyzeResearchWithGemini,
   detectAiContentWithGemini,
-  getStoredApiKey,
-  saveApiKey,
 } from './services/geminiClient';
 import {
   analyzeResearchWithOpenAI,
@@ -33,6 +31,7 @@ import {
 } from './types/research';
 import { ExtractResult, InlineFileData } from './utils/pdfExtractor';
 import { calculateTextMetrics } from './utils/textStats';
+import { normalizeAnalysisResult } from './utils/normalizeAnalysis';
 import {
   getSavedResearches,
   saveResearch,
@@ -69,7 +68,6 @@ export default function App() {
   const [savedList, setSavedList] = useState<SavedResearch[]>([]);
   const [isSavedModalOpen, setIsSavedModalOpen] = useState<boolean>(false);
   const [isCurrentSaved, setIsCurrentSaved] = useState<boolean>(false);
-  const [geminiKey, setGeminiKey] = useState<string>(() => getStoredApiKey());
   const [openAiKey, setOpenAiKey] = useState<string>(() => getStoredOpenAiKey());
   const [isKeyPage, setIsKeyPage] = useState<boolean>(() => window.location.hash === '#/key');
 
@@ -80,7 +78,6 @@ export default function App() {
 
     const handleHashChange = () => {
       setIsKeyPage(window.location.hash === '#/key');
-      setGeminiKey(getStoredApiKey());
       setOpenAiKey(getStoredOpenAiKey());
     };
     window.addEventListener('hashchange', handleHashChange);
@@ -106,19 +103,12 @@ export default function App() {
   const closeKeyPage = () => {
     window.location.hash = '';
     setIsKeyPage(false);
-    setGeminiKey(getStoredApiKey());
     setOpenAiKey(getStoredOpenAiKey());
   };
 
-  const handleSaveKeys = (keys: { openaiKey?: string; geminiKey?: string }) => {
-    if (keys.openaiKey) {
-      saveOpenAiKey(keys.openaiKey);
-      setOpenAiKey(keys.openaiKey.trim());
-    }
-    if (keys.geminiKey) {
-      saveApiKey(keys.geminiKey);
-      setGeminiKey(keys.geminiKey.trim());
-    }
+  const handleSaveOpenAiKey = (key: string) => {
+    saveOpenAiKey(key);
+    setOpenAiKey(key.trim());
     if (errorMessage) setErrorMessage(null);
   };
 
@@ -132,24 +122,15 @@ export default function App() {
   const activeTextForMetrics = lastAnalyzedText || (currentProvider === 'gemini' ? uploadedFile?.text || '' : text);
   const metrics = calculateTextMetrics(activeTextForMetrics);
 
-  const missingRequiredKey =
-    (currentProvider === 'gemini' && !geminiKey.trim()) ||
-    (currentProvider === 'openai' && !openAiKey.trim());
+  const missingRequiredKey = currentProvider === 'openai' && !openAiKey.trim();
 
-  // Analysis function (Separately routes Paste/Link -> OpenAI GPT-4o, Upload -> Gemini)
+  // Analysis function (Separately routes Paste/Link -> OpenAI GPT-4o, Upload -> Server-Side Gemini)
   const handleAnalyze = async () => {
     if (!canAnalyze || isLoading) return;
 
-    if (currentProvider === 'gemini' && !geminiKey.trim()) {
-      setErrorMessage(
-        'لم يتم إدخال مفتاح Gemini API (GEMINI_API_KEY) بعد. افتح صفحة المفاتيح لإدخاله وحفظه لتحليل الملفات والصور.'
-      );
-      return;
-    }
-
     if (currentProvider === 'openai' && !openAiKey.trim()) {
       setErrorMessage(
-        'لم يتم إدخال مفتاح OpenAI API (OPENAI_API_KEY) بعد. افتح صفحة المفاتيح لإدخاله وحفظه لتحليل النصوص عبر GPT-4o.'
+        'لم يتم إدخال مفتاح OpenAI API بعد. افتح صفحة المفتاح لإدخاله وحفظه لتحليل النصوص عبر GPT-4o.'
       );
       return;
     }
@@ -188,7 +169,6 @@ export default function App() {
         analysis = await analyzeResearchWithGemini(
           uploadedFile.text,
           analysisMode,
-          geminiKey,
           uploadedFile.inlineData
         );
         setLastAnalysisProvider('gemini');
@@ -221,20 +201,13 @@ export default function App() {
     }
   };
 
-  // AI Content Detection function (GPT-4o for Paste/Link, Gemini for Upload)
+  // AI Content Detection function (GPT-4o for Paste/Link, Server-Side Gemini for Upload)
   const handleDetectAi = async () => {
     if (!canAnalyze || isLoading || isDetectingAi) return;
 
-    if (currentProvider === 'gemini' && !geminiKey.trim()) {
-      setErrorMessage(
-        'لم يتم إدخال مفتاح Gemini API (GEMINI_API_KEY) بعد. افتح صفحة المفاتيح لإدخاله وحفظه لفحص الملفات والصور.'
-      );
-      return;
-    }
-
     if (currentProvider === 'openai' && !openAiKey.trim()) {
       setErrorMessage(
-        'لم يتم إدخال مفتاح OpenAI API (OPENAI_API_KEY) بعد. افتح صفحة المفاتيح لإدخاله وحفظه لفحص النصوص عبر GPT-4o.'
+        'لم يتم إدخال مفتاح OpenAI API بعد. افتح صفحة المفتاح لإدخاله وحفظه لفحص النصوص عبر GPT-4o.'
       );
       return;
     }
@@ -247,7 +220,6 @@ export default function App() {
         currentProvider === 'gemini' && uploadedFile
           ? await detectAiContentWithGemini(
               uploadedFile.text,
-              geminiKey,
               uploadedFile.inlineData
             )
           : await detectAiContentWithOpenAI(text, openAiKey);
@@ -312,9 +284,9 @@ export default function App() {
 
   // Open saved item
   const handleOpenSavedItem = (item: SavedResearch) => {
-    setText(item.rawText);
+    setText(item.rawText || '');
     setActiveInputTab('paste');
-    setAnalysisResult(item.analysis);
+    setAnalysisResult(normalizeAnalysisResult(item.analysis));
     setLastAnalysisProvider('openai');
     setLastAnalyzedText(item.rawText);
     setLastAnalyzedInlineData(undefined);
@@ -368,7 +340,7 @@ export default function App() {
         hasResults={!!analysisResult}
         onPrint={handlePrint}
         onOpenKeyPage={openKeyPage}
-        hasApiKey={Boolean(openAiKey.trim() || geminiKey.trim())}
+        hasApiKey={Boolean(openAiKey.trim())}
         isKeyPage={isKeyPage}
       />
 
@@ -376,8 +348,7 @@ export default function App() {
         {isKeyPage ? (
           <KeyPage
             hasOpenAiKey={Boolean(openAiKey.trim())}
-            hasGeminiKey={Boolean(geminiKey.trim())}
-            onSaveKeys={handleSaveKeys}
+            onSaveOpenAiKey={handleSaveOpenAiKey}
             onBack={closeKeyPage}
           />
         ) : (
@@ -464,7 +435,7 @@ export default function App() {
                     className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-teal-900 text-white text-xs font-bold transition inline-flex items-center gap-1.5 shrink-0"
                   >
                     <Key className="w-3.5 h-3.5" />
-                    <span>الذهاب إلى صفحة المفاتيح</span>
+                    <span>الذهاب إلى صفحة المفتاح</span>
                   </button>
                 )}
               </div>
@@ -560,7 +531,6 @@ export default function App() {
                   paperTitle={analysisResult.titleSuggestion || 'هذا البحث'}
                   provider={lastAnalysisProvider}
                   openAiKey={openAiKey}
-                  geminiKey={geminiKey}
                   inlineData={lastAnalyzedInlineData}
                 />
               </div>

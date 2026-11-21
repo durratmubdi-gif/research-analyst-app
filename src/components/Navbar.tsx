@@ -61,7 +61,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           <button
             onClick={onOpenKeyPage}
-            title="إدارة مفاتيح OpenAI و Gemini"
+            title="إدارة مفتاح OpenAI API"
             className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold border transition ${
               isKeyPage
                 ? 'bg-slate-900 text-white border-slate-900'
@@ -69,7 +69,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             }`}
           >
             <Key className={`w-3.5 h-3.5 ${hasApiKey ? 'text-emerald-600' : 'text-amber-600'}`} />
-            <span className="hidden sm:inline">صفحة المفاتيح</span>
+            <span className="hidden sm:inline">صفحة المفتاح</span>
           </button>
 
           <button

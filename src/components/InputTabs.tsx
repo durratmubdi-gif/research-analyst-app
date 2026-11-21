@@ -270,7 +270,7 @@ export const InputTabs: React.FC<InputTabsProps> = ({
           <div className="space-y-4">
             <div className="flex items-center justify-between text-xs bg-teal-50/80 border border-teal-200/80 text-teal-900 rounded-xl px-3.5 py-2">
               <span className="font-semibold">
-                🔵 وضع رفع الملفات والصور يستخدم مفتاح <b>Gemini</b> لقراءة PDF / TXT / DOCX والصور وتحليلها مباشرة
+                🔵 وضع رفع الملفات والصور يستخدم <b>Gemini</b> لقراءة PDF / TXT / DOCX والصور وتحليلها مباشرة
               </span>
             </div>
 
