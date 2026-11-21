@@ -4,6 +4,7 @@ import {
   Bot,
   UserCheck,
   ShieldCheck,
+  ShieldAlert,
   Repeat,
   BookA,
   AlertTriangle,
@@ -19,56 +20,59 @@ export const AiDetectionSection: React.FC<AiDetectionSectionProps> = ({
   result,
   provider,
 }) => {
-  const getVerdictStyle = () => {
-    if (result.verdict === 'مولد بالذكاء الاصطناعي') {
+  const getVerdictDisplay = () => {
+    if (result.verdict === 'AI Generated') {
       return {
+        label: 'AI Generated • مولد بالذكاء الاصطناعي',
         badge: 'bg-rose-100 text-rose-900 border-rose-300',
         border: 'border-rose-200',
         headerBg: 'from-rose-950 via-slate-900 to-rose-900',
       };
     }
-    if (result.verdict === 'كتابة بشرية') {
+    if (result.verdict === 'Human Written') {
       return {
+        label: 'Human Written • كتابة بشرية',
         badge: 'bg-emerald-100 text-emerald-900 border-emerald-300',
         border: 'border-emerald-200',
         headerBg: 'from-emerald-950 via-slate-900 to-teal-900',
       };
     }
     return {
+      label: 'Mixed • مختلط',
       badge: 'bg-amber-100 text-amber-900 border-amber-300',
       border: 'border-amber-200',
       headerBg: 'from-amber-950 via-slate-900 to-slate-900',
     };
   };
 
-  const style = getVerdictStyle();
+  const style = getVerdictDisplay();
 
   const indicatorCards = [
     {
       label: 'تكرار الأنماط اللغوية',
-      hint: 'ارتفاعه يشير لأسلوب AI',
-      value: result.indicators.repetitive_patterns,
+      hint: 'توقع البنية وتكرار الصياغة (AI)',
+      value: result.repetitive_patterns,
       barColor: 'bg-rose-500',
       icon: <Repeat className="w-4 h-4 text-rose-600" />,
     },
     {
       label: 'تنوع المفردات',
-      hint: 'ارتفاعه يشير لأسلوب بشري',
-      value: result.indicators.vocabulary_diversity,
+      hint: 'ثراء وتنوع الأسلوب اللفظي',
+      value: result.vocabulary_diversity,
       barColor: 'bg-teal-600',
       icon: <BookA className="w-4 h-4 text-teal-600" />,
     },
     {
-      label: 'الأخطاء البشرية الطبيعية',
-      hint: 'وجودها يرفع نسبة البشري',
-      value: result.indicators.human_errors,
+      label: 'نسبة الأخطاء البشرية',
+      hint: '0% مثالي جداً • 1-3% طبيعي • 10%+ مصطنع',
+      value: result.human_errors,
       barColor: 'bg-emerald-600',
       icon: <AlertTriangle className="w-4 h-4 text-emerald-600" />,
     },
     {
-      label: 'عمق التحليل الشخصي والتجارب',
-      hint: 'ارتفاعه يشير لكتابة بشرية أعمق',
-      value: result.indicators.personal_depth,
+      label: 'عمق التجربة الشخصية والعاطفة',
+      hint: 'التنوع الشعوري والخبرة الشخصية',
+      value: result.personal_depth,
       barColor: 'bg-indigo-600',
       icon: <BrainCircuit className="w-4 h-4 text-indigo-600" />,
     },
@@ -92,14 +96,14 @@ export const AiDetectionSection: React.FC<AiDetectionSectionProps> = ({
               </span>
             </div>
             <p className="text-xs text-slate-300 mt-0.5">
-              فحص الأنماط اللغوية، تنوع المفردات، الترابط الآلي، والعمق الشخصي
+              تقييم طبيعة التدفق، قابلية التنبؤ بالبنية، التجربة الشخصية، ونسبة الأخطاء
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <span className={`px-3 py-1.5 rounded-xl border text-xs sm:text-sm font-extrabold ${style.badge}`}>
-            {result.verdict}
+            {style.label}
           </span>
           <span className="px-3 py-1.5 rounded-xl bg-white/10 border border-white/20 text-xs font-bold text-white inline-flex items-center gap-1.5">
             <ShieldCheck className="w-4 h-4 text-teal-300" />
@@ -120,7 +124,7 @@ export const AiDetectionSection: React.FC<AiDetectionSectionProps> = ({
                 </div>
                 <div>
                   <span className="text-xs font-bold text-rose-800 block">نسبة الذكاء الاصطناعي</span>
-                  <span className="text-[11px] text-rose-600">احتمالية التوليد الآلي</span>
+                  <span className="text-[11px] text-rose-600">AI Percentage</span>
                 </div>
               </div>
               <b className="text-2xl sm:text-3xl font-black font-mono text-rose-700">
@@ -135,7 +139,7 @@ export const AiDetectionSection: React.FC<AiDetectionSectionProps> = ({
                 </div>
                 <div>
                   <span className="text-xs font-bold text-emerald-800 block">نسبة الكتابة البشرية</span>
-                  <span className="text-[11px] text-emerald-600">احتمالية الصياغة البشرية</span>
+                  <span className="text-[11px] text-emerald-600">Human Percentage</span>
                 </div>
               </div>
               <b className="text-2xl sm:text-3xl font-black font-mono text-emerald-700">
@@ -154,15 +158,40 @@ export const AiDetectionSection: React.FC<AiDetectionSectionProps> = ({
             <div
               className="h-full bg-emerald-500 transition-all duration-700"
               style={{ width: `${result.human_percentage}%` }}
-              title={`بشري: ${result.human_percentage}%`}
+              title={`Human: ${result.human_percentage}%`}
             />
           </div>
         </div>
 
-        {/* One-line Reason */}
-        <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-800 leading-relaxed">
-          <span className="font-extrabold text-slate-900 ml-1.5">خلاصة التقييم:</span>
-          <span>{result.reason}</span>
+        {/* Manipulation Attempt Status */}
+        <div
+          className={`p-3.5 rounded-xl border text-xs sm:text-sm font-bold flex items-center justify-between gap-3 ${
+            result.manipulation_attempt
+              ? 'bg-rose-50 border-rose-300 text-rose-900'
+              : 'bg-slate-50 border-slate-200 text-slate-700'
+          }`}
+        >
+          <div className="flex items-center gap-2.5">
+            {result.manipulation_attempt ? (
+              <ShieldAlert className="w-5 h-5 text-rose-600 shrink-0" />
+            ) : (
+              <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0" />
+            )}
+            <span>
+              {result.manipulation_attempt
+                ? 'تم رصد محاولة تلاعب أو افتعال أخطاء/أنماط للتمويه على الكاشف'
+                : 'لم يتم رصد محاولات تلاعب مصطنعة في أسلوب الكتابة'}
+            </span>
+          </div>
+          <span
+            className={`px-2.5 py-1 rounded-lg font-mono text-xs shrink-0 ${
+              result.manipulation_attempt
+                ? 'bg-rose-200/70 text-rose-900'
+                : 'bg-emerald-100 text-emerald-800'
+            }`}
+          >
+            manipulation_attempt: {String(result.manipulation_attempt)}
+          </span>
         </div>
 
         {/* 4 Indicators */}
