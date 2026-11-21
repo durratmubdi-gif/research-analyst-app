@@ -12,13 +12,16 @@ import { ActionPlanSection } from './components/ActionPlanSection';
 import { PaperChatDrawer } from './components/PaperChatDrawer';
 import { SavedLibraryModal } from './components/SavedLibraryModal';
 import { KeyPage } from './components/KeyPage';
+import { AiDetectionSection } from './components/AiDetectionSection';
 import {
   analyzeResearchWithGemini,
+  detectAiContentWithGemini,
   getStoredApiKey,
   saveApiKey,
 } from './services/geminiClient';
 import {
   analyzeResearchWithOpenAI,
+  detectAiContentWithOpenAI,
   getStoredOpenAiKey,
   saveOpenAiKey,
 } from './services/openaiClient';
@@ -26,6 +29,7 @@ import {
   AnalysisResult,
   AnalysisMode,
   SavedResearch,
+  AiDetectionResult,
 } from './types/research';
 import { ExtractResult, InlineFileData } from './utils/pdfExtractor';
 import { calculateTextMetrics } from './utils/textStats';
@@ -51,9 +55,12 @@ export default function App() {
   const [activeInputTab, setActiveInputTab] = useState<'paste' | 'upload' | 'link'>('paste');
   const [analysisMode, setAnalysisMode] = useState<AnalysisMode>('full');
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isDetectingAi, setIsDetectingAi] = useState<boolean>(false);
   const [loadingStepText, setLoadingStepText] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
+  const [aiDetectionResult, setAiDetectionResult] = useState<AiDetectionResult | null>(null);
+  const [aiDetectionProvider, setAiDetectionProvider] = useState<'openai' | 'gemini'>('openai');
   const [lastAnalysisProvider, setLastAnalysisProvider] = useState<'openai' | 'gemini'>('openai');
   const [lastAnalyzedText, setLastAnalyzedText] = useState<string>('');
   const [lastAnalyzedInlineData, setLastAnalyzedInlineData] = useState<InlineFileData | undefined>(
@@ -214,12 +221,63 @@ export default function App() {
     }
   };
 
+  // AI Content Detection function (GPT-4o for Paste/Link, Gemini for Upload)
+  const handleDetectAi = async () => {
+    if (!canAnalyze || isLoading || isDetectingAi) return;
+
+    if (currentProvider === 'gemini' && !geminiKey.trim()) {
+      setErrorMessage(
+        'لم يتم إدخال مفتاح Gemini API (GEMINI_API_KEY) بعد. افتح صفحة المفاتيح لإدخاله وحفظه لفحص الملفات والصور.'
+      );
+      return;
+    }
+
+    if (currentProvider === 'openai' && !openAiKey.trim()) {
+      setErrorMessage(
+        'لم يتم إدخال مفتاح OpenAI API (OPENAI_API_KEY) بعد. افتح صفحة المفاتيح لإدخاله وحفظه لفحص النصوص عبر GPT-4o.'
+      );
+      return;
+    }
+
+    setErrorMessage(null);
+    setIsDetectingAi(true);
+
+    try {
+      const detection =
+        currentProvider === 'gemini' && uploadedFile
+          ? await detectAiContentWithGemini(
+              uploadedFile.text,
+              geminiKey,
+              uploadedFile.inlineData
+            )
+          : await detectAiContentWithOpenAI(text, openAiKey);
+
+      setAiDetectionResult(detection);
+      setAiDetectionProvider(currentProvider);
+
+      setTimeout(() => {
+        document.getElementById('ai-detection-section')?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        });
+      }, 250);
+    } catch (err: unknown) {
+      const error = err as Error;
+      setErrorMessage(
+        error.message || 'تعذر إكمال فحص نسبة الذكاء الاصطناعي. يرجى التأكد من المفتاح والاتصال والمحاولة مجدداً.'
+      );
+    } finally {
+      setIsDetectingAi(false);
+    }
+  };
+
   // Reset to new analysis
   const handleReset = () => {
     setText('');
     revokePreviewUrl(uploadedFile);
     setUploadedFile(null);
     setAnalysisResult(null);
+    setAiDetectionResult(null);
     setLastAnalyzedText('');
     setLastAnalyzedInlineData(undefined);
     setErrorMessage(null);
@@ -380,7 +438,9 @@ export default function App() {
                 mode={analysisMode}
                 onChangeMode={setAnalysisMode}
                 onAnalyze={handleAnalyze}
+                onDetectAi={handleDetectAi}
                 isLoading={isLoading}
+                isDetectingAi={isDetectingAi}
                 canAnalyze={canAnalyze}
                 loadingStepText={loadingStepText}
                 provider={currentProvider}
@@ -393,7 +453,7 @@ export default function App() {
                 <div className="flex items-start gap-3">
                   <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
                   <div>
-                    <b className="font-bold block">تعذر إكمال التحليل الأكاديمي</b>
+                    <b className="font-bold block">تعذر إكمال العملية</b>
                     <p className="text-rose-700 mt-0.5">{errorMessage}</p>
                   </div>
                 </div>
@@ -411,25 +471,39 @@ export default function App() {
             )}
 
             {/* Loading Card with academic skeleton */}
-            {isLoading && (
+            {(isLoading || isDetectingAi) && (
               <div className="bg-white rounded-2xl border border-teal-200 p-8 text-center space-y-4 shadow-md no-print">
                 <div className="w-16 h-16 mx-auto rounded-2xl bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700">
                   <RefreshCw className="w-8 h-8 animate-spin text-teal-600" />
                 </div>
                 <div>
                   <h3 className="font-bold text-slate-900 text-lg">
-                    {loadingStepText ||
-                      (currentProvider === 'gemini'
-                        ? 'جاري تحليل الملف أو الصورة عبر Gemini...'
-                        : 'جاري تحليل البحث الأكاديمي عبر GPT-4o...')}
+                    {isDetectingAi
+                      ? 'جاري فحص الأنماط اللغوية وكشف نسبة الذكاء الاصطناعي...'
+                      : loadingStepText ||
+                        (currentProvider === 'gemini'
+                          ? 'جاري تحليل الملف أو الصورة عبر Gemini...'
+                          : 'جاري تحليل البحث الأكاديمي عبر GPT-4o...')}
                   </h3>
                   <p className="text-xs text-slate-500 mt-1">
-                    نقوم بفحص المنهجية، استخراج النتائج الكمية والنوعية، وصياغة الردود الدفاعية...
+                    {isDetectingAi
+                      ? 'نقوم بتحليل تكرار الأنماط اللغوية، تنوع المفردات، الأخطاء البشرية الطبيعية، وعمق التحليل الشخصي...'
+                      : 'نقوم بفحص المنهجية، استخراج النتائج الكمية والنوعية، وصياغة الردود الدفاعية...'}
                   </p>
                 </div>
                 <div className="max-w-md mx-auto w-full bg-slate-100 h-2 rounded-full overflow-hidden">
                   <div className="bg-gradient-to-r from-teal-500 to-indigo-600 h-full w-2/3 animate-pulse rounded-full"></div>
                 </div>
+              </div>
+            )}
+
+            {/* AI Content Detection Result View */}
+            {aiDetectionResult && (
+              <div id="ai-detection-section" className="pt-2">
+                <AiDetectionSection
+                  result={aiDetectionResult}
+                  provider={aiDetectionProvider}
+                />
               </div>
             )}
 

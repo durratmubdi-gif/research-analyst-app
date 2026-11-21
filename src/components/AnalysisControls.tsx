@@ -1,12 +1,14 @@
 import React from 'react';
 import { AnalysisMode } from '../types/research';
-import { Sparkles, ShieldAlert, Award, FileSearch, Layers } from 'lucide-react';
+import { Sparkles, ShieldAlert, Award, FileSearch, Layers, Bot } from 'lucide-react';
 
 interface AnalysisControlsProps {
   mode: AnalysisMode;
   onChangeMode: (mode: AnalysisMode) => void;
   onAnalyze: () => void;
+  onDetectAi: () => void;
   isLoading: boolean;
+  isDetectingAi: boolean;
   canAnalyze: boolean;
   loadingStepText?: string;
   provider: 'openai' | 'gemini';
@@ -16,7 +18,9 @@ export const AnalysisControls: React.FC<AnalysisControlsProps> = ({
   mode,
   onChangeMode,
   onAnalyze,
+  onDetectAi,
   isLoading,
+  isDetectingAi,
   canAnalyze,
   loadingStepText,
   provider,
@@ -57,6 +61,13 @@ export const AnalysisControls: React.FC<AnalysisControlsProps> = ({
     provider === 'gemini'
       ? 'حلل الملف أو الصورة عبر Gemini الآن ✨'
       : 'حلل النص عبر GPT-4o الآن ✨';
+
+  const detectorLabel =
+    provider === 'gemini'
+      ? 'كشف نسبة الذكاء الاصطناعي (Gemini)'
+      : 'كشف نسبة الذكاء الاصطناعي (GPT-4o)';
+
+  const busy = isLoading || isDetectingAi;
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-xs space-y-4 no-print">
@@ -101,14 +112,14 @@ export const AnalysisControls: React.FC<AnalysisControlsProps> = ({
         </div>
       </div>
 
-      {/* Main Action Button */}
-      <div className="pt-2 flex flex-col sm:flex-row items-center gap-3">
+      {/* Main Action Buttons */}
+      <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
         <button
           type="button"
           onClick={onAnalyze}
-          disabled={isLoading || !canAnalyze}
+          disabled={busy || !canAnalyze}
           className={`w-full sm:flex-1 py-3.5 px-6 rounded-xl font-bold text-sm sm:text-base transition flex items-center justify-center gap-2.5 shadow-lg ${
-            isLoading || !canAnalyze
+            busy || !canAnalyze
               ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
               : 'bg-gradient-to-r from-slate-900 via-indigo-950 to-teal-900 hover:from-slate-800 hover:to-teal-800 text-white shadow-teal-950/20 active:scale-[0.99]'
           }`}
@@ -122,6 +133,29 @@ export const AnalysisControls: React.FC<AnalysisControlsProps> = ({
             <>
               <Sparkles className="w-5 h-5 text-teal-300 animate-pulse" />
               <span>{actionLabel}</span>
+            </>
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={onDetectAi}
+          disabled={busy || !canAnalyze}
+          className={`w-full sm:w-auto py-3.5 px-5 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2 border ${
+            busy || !canAnalyze
+              ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
+              : 'bg-white hover:bg-rose-50 text-slate-900 border-slate-300 hover:border-rose-300 shadow-xs active:scale-[0.99]'
+          }`}
+        >
+          {isDetectingAi ? (
+            <>
+              <div className="w-4 h-4 border-2 border-rose-600/30 border-t-rose-600 rounded-full animate-spin"></div>
+              <span>جاري فحص نسبة الذكاء الاصطناعي...</span>
+            </>
+          ) : (
+            <>
+              <Bot className="w-4 h-4 text-rose-600" />
+              <span>{detectorLabel}</span>
             </>
           )}
         </button>

@@ -1,4 +1,9 @@
-import { AnalysisMode, AnalysisResult } from '../types/research';
+import { AnalysisMode, AnalysisResult, AiDetectionResult } from '../types/research';
+import {
+  AI_DETECTION_SYSTEM_PROMPT,
+  buildAiDetectionUserPrompt,
+  normalizeAiDetectionResult,
+} from '../utils/aiDetectionPrompt';
 
 const OPENAI_KEY_STORAGE_KEY = 'openai_api_key';
 const OPENAI_MODEL = 'gpt-4o';
@@ -199,4 +204,52 @@ ${(researchText || '').slice(0, 30000)}
   }
 
   return reply;
+}
+
+export async function detectAiContentWithOpenAI(
+  text: string,
+  apiKey: string
+): Promise<AiDetectionResult> {
+  const cleanKey = apiKey.trim();
+  if (!cleanKey) {
+    throw new Error('الرجاء إدخال مفتاح OpenAI API وحفظه في صفحة المفاتيح لفحص النص عبر GPT-4o.');
+  }
+
+  if (!text || text.trim().length < 40) {
+    throw new Error('النص المدخل قصير جداً لفحص نسبة الذكاء الاصطناعي. الرجاء إدخال فقرة أو نص أطول.');
+  }
+
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${cleanKey}`,
+    },
+    body: JSON.stringify({
+      model: OPENAI_MODEL,
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: AI_DETECTION_SYSTEM_PROMPT },
+        { role: 'user', content: buildAiDetectionUserPrompt(text) },
+      ],
+    }),
+  });
+
+  if (!res.ok) {
+    const errBody = await res.text();
+    throw new Error(parseOpenAiError(res.status, errBody));
+  }
+
+  const data = await res.json();
+  const rawText = data?.choices?.[0]?.message?.content;
+
+  if (!rawText) {
+    throw new Error('لم يُرجع نموذج GPT-4o استجابة صالحة لفحص الذكاء الاصطناعي.');
+  }
+
+  try {
+    return normalizeAiDetectionResult(rawText);
+  } catch {
+    throw new Error('تعذر تحليل استجابة JSON لفحص الذكاء الاصطناعي من GPT-4o.');
+  }
 }

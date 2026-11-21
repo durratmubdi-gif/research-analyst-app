@@ -57,3 +57,21 @@ export interface ChatMessage {
 }
 
 export type AnalysisMode = 'full' | 'summary' | 'critical' | 'presentation' | 'methodology';
+
+export type AiDetectionVerdict = 'كتابة بشرية' | 'مختلط' | 'مولد بالذكاء الاصطناعي';
+
+export interface AiDetectionIndicators {
+  repetitive_patterns: number;
+  vocabulary_diversity: number;
+  human_errors: number;
+  personal_depth: number;
+}
+
+export interface AiDetectionResult {
+  ai_percentage: number;
+  human_percentage: number;
+  confidence: number;
+  verdict: AiDetectionVerdict;
+  reason: string;
+  indicators: AiDetectionIndicators;
+}

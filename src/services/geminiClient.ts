@@ -1,5 +1,10 @@
-import { AnalysisMode, AnalysisResult } from '../types/research';
+import { AnalysisMode, AnalysisResult, AiDetectionResult } from '../types/research';
 import { InlineFileData } from '../utils/pdfExtractor';
+import {
+  AI_DETECTION_SYSTEM_PROMPT,
+  buildAiDetectionUserPrompt,
+  normalizeAiDetectionResult,
+} from '../utils/aiDetectionPrompt';
 
 const API_KEY_STORAGE_KEY = 'gemini_api_key';
 const LEGACY_API_KEY_STORAGE_KEY = 'gemini_key';
@@ -320,4 +325,110 @@ ${
   }
 
   return reply;
+}
+
+export async function detectAiContentWithGemini(
+  text: string,
+  apiKey: string,
+  inlineData?: InlineFileData
+): Promise<AiDetectionResult> {
+  const cleanKey = apiKey.trim();
+  if (!cleanKey) {
+    throw new Error('الرجاء إدخال مفتاح Gemini API وحفظه في صفحة المفاتيح لفحص الملف أو الصورة.');
+  }
+
+  const hasText = Boolean(text && text.trim().length >= 30);
+  if (!hasText && !inlineData) {
+    throw new Error('الرجاء رفع ملف أو صورة صالحة لفحص نسبة الذكاء الاصطناعي.');
+  }
+
+  const parts: Array<Record<string, unknown>> = [];
+  if (inlineData) {
+    parts.push({
+      inlineData: {
+        mimeType: inlineData.mimeType,
+        data: inlineData.data,
+      },
+    });
+  }
+  parts.push({ text: buildAiDetectionUserPrompt(text) });
+
+  const responseSchema = {
+    type: 'OBJECT',
+    properties: {
+      ai_percentage: { type: 'INTEGER' },
+      human_percentage: { type: 'INTEGER' },
+      confidence: { type: 'INTEGER' },
+      verdict: {
+        type: 'STRING',
+        enum: ['كتابة بشرية', 'مختلط', 'مولد بالذكاء الاصطناعي'],
+      },
+      reason: { type: 'STRING' },
+      indicators: {
+        type: 'OBJECT',
+        properties: {
+          repetitive_patterns: { type: 'INTEGER' },
+          vocabulary_diversity: { type: 'INTEGER' },
+          human_errors: { type: 'INTEGER' },
+          personal_depth: { type: 'INTEGER' },
+        },
+        required: [
+          'repetitive_patterns',
+          'vocabulary_diversity',
+          'human_errors',
+          'personal_depth',
+        ],
+      },
+    },
+    required: [
+      'ai_percentage',
+      'human_percentage',
+      'confidence',
+      'verdict',
+      'reason',
+      'indicators',
+    ],
+  };
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(cleanKey)}`;
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      systemInstruction: {
+        parts: [{ text: AI_DETECTION_SYSTEM_PROMPT }],
+      },
+      contents: [
+        {
+          role: 'user',
+          parts,
+        },
+      ],
+      generationConfig: {
+        responseMimeType: 'application/json',
+        responseSchema,
+      },
+    }),
+  });
+
+  if (!res.ok) {
+    const errBody = await res.text();
+    throw new Error(parseGeminiError(res.status, errBody));
+  }
+
+  const data = await res.json();
+  const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+  if (!rawText) {
+    throw new Error('لم يُرجع نموذج Gemini استجابة صالحة لفحص الذكاء الاصطناعي.');
+  }
+
+  try {
+    return normalizeAiDetectionResult(rawText);
+  } catch {
+    throw new Error('تعذر تحليل استجابة JSON لفحص الذكاء الاصطناعي من Gemini.');
+  }
 }
