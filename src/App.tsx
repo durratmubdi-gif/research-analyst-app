@@ -13,6 +13,7 @@ import { PaperChatDrawer } from './components/PaperChatDrawer';
 import { SavedLibraryModal } from './components/SavedLibraryModal';
 import { KeyPage } from './components/KeyPage';
 import { AiDetectionSection } from './components/AiDetectionSection';
+import { ResearchWriterStudio } from './components/ResearchWriterStudio';
 import {
   analyzeResearchWithGemini,
   detectAiContentWithGemini,
@@ -46,9 +47,12 @@ import {
   AlertCircle,
   RefreshCw,
   Key,
+  FileSearch,
+  PenTool,
 } from 'lucide-react';
 
 export default function App() {
+  const [workspaceMode, setWorkspaceMode] = useState<'analyze' | 'write'>('analyze');
   const [text, setText] = useState<string>('');
   const [uploadedFile, setUploadedFile] = useState<ExtractResult | null>(null);
   const [activeInputTab, setActiveInputTab] = useState<'paste' | 'upload' | 'link'>('paste');
@@ -369,8 +373,49 @@ export default function App() {
                 الملخص التنفيذي، نفكك المنهجية والعينات، نرصد نقاط القوة والضعف، ونحاكي أسئلة لجنة
                 المناقشة الأكاديمية.
               </p>
+
+              {/* Workspace Switcher: Analyze Existing vs Plan & Draft New */}
+              <div className="pt-2 flex justify-center">
+                <div className="inline-flex items-center gap-1 p-1 bg-slate-200/70 rounded-xl border border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => setWorkspaceMode('analyze')}
+                    className={`px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition inline-flex items-center gap-2 whitespace-nowrap shrink-0 ${
+                      workspaceMode === 'analyze'
+                        ? 'bg-white text-slate-900 shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <FileSearch className="w-4 h-4 text-teal-700" />
+                    <span>تحليل وفحص الأبحاث</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setWorkspaceMode('write')}
+                    className={`px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition inline-flex items-center gap-2 whitespace-nowrap shrink-0 ${
+                      workspaceMode === 'write'
+                        ? 'bg-white text-slate-900 shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <PenTool className="w-4 h-4 text-indigo-700" />
+                    <span>تخطيط وكتابة بحث جديد</span>
+                  </button>
+                </div>
+              </div>
             </div>
 
+            {workspaceMode === 'write' ? (
+              <ResearchWriterStudio
+                onSendToAnalyzer={(draftText) => {
+                  setText(draftText);
+                  setActiveInputTab('paste');
+                  setWorkspaceMode('analyze');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+              />
+            ) : (
+              <>
             {/* Input & Upload Controls */}
             <div className="space-y-4 no-print">
               <InputTabs
@@ -534,6 +579,8 @@ export default function App() {
                   inlineData={lastAnalyzedInlineData}
                 />
               </div>
+            )}
+              </>
             )}
           </>
         )}

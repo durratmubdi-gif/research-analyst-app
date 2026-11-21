@@ -35,9 +35,12 @@ function parseOpenAiError(status: number, bodyText: string): string {
       return 'مفتاح OpenAI API غير صالح أو منتهي الصلاحية. يرجى التأكد من المفتاح في صفحة المفتاح.';
     }
     if (status === 429) {
-      return 'تم تجاوز حد الاستخدام أو الرصيد المتاح لمفتاح OpenAI حالياً (429).';
+      return 'تم تجاوز حد الاستخدام أو الرصيد المتاح لمفتاح OpenAI حالياً (429). يرجى الانتظار قليلاً ثم إعادة المحاولة.';
     }
-    if (msg) return `خطأ من OpenAI API (${status}): ${msg}`;
+    if (status === 503) {
+      return 'تشهد خوادم OpenAI ضغطاً مؤقتاً حالياً (503). يرجى إعادة المحاولة بعد قليل.';
+    }
+    if (msg) return `تعذر إتمام الطلب عبر GPT-4o (${status}): ${msg}`;
   } catch {
     // ignore JSON parse errors
   }
@@ -254,3 +257,43 @@ export async function detectAiContentWithOpenAI(
     throw new Error('تعذر تحليل استجابة JSON لفحص الذكاء الاصطناعي من GPT-4o.');
   }
 }
+
+export async function generateTextWithOpenAIFallback(params: {
+  systemInstruction: string;
+  userPrompt: string;
+  apiKey: string;
+}): Promise<string> {
+  const cleanKey = params.apiKey.trim();
+  if (!cleanKey) {
+    throw new Error('مفتاح OpenAI API غير متوفر للتحويل البديل.');
+  }
+
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${cleanKey}`,
+    },
+    body: JSON.stringify({
+      model: OPENAI_MODEL,
+      messages: [
+        { role: 'system', content: params.systemInstruction },
+        { role: 'user', content: params.userPrompt },
+      ],
+    }),
+  });
+
+  if (!res.ok) {
+    const errBody = await res.text();
+    throw new Error(parseOpenAiError(res.status, errBody));
+  }
+
+  const data = await res.json();
+  const content = data?.choices?.[0]?.message?.content;
+  if (typeof content !== 'string' || !content.trim()) {
+    throw new Error('لم يُرجع نموذج GPT-4o نصاً صالحاً.');
+  }
+
+  return content.trim();
+}
+
