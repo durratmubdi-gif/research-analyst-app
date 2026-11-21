@@ -37,7 +37,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               </h1>
               <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-teal-50 text-teal-800 border border-teal-200/70">
                 <Sparkles className="w-3 h-3 text-teal-600 animate-pulse" />
-                Gemini 4 AI
+                GPT-4o &amp; Gemini
               </span>
             </div>
             <p className="text-xs text-slate-500 hidden sm:block">
@@ -61,7 +61,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           <button
             onClick={onOpenKeyPage}
-            title="إدارة مفتاح Gemini API"
+            title="إدارة مفاتيح OpenAI و Gemini"
             className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold border transition ${
               isKeyPage
                 ? 'bg-slate-900 text-white border-slate-900'
@@ -69,7 +69,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             }`}
           >
             <Key className={`w-3.5 h-3.5 ${hasApiKey ? 'text-emerald-600' : 'text-amber-600'}`} />
-            <span className="hidden sm:inline">صفحة المفتاح</span>
+            <span className="hidden sm:inline">صفحة المفاتيح</span>
           </button>
 
           <button

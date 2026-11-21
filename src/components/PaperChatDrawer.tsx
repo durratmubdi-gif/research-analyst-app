@@ -9,17 +9,25 @@ import {
   Lightbulb,
 } from 'lucide-react';
 import { chatAboutResearchWithGemini } from '../services/geminiClient';
+import { chatAboutResearchWithOpenAI } from '../services/openaiClient';
+import { InlineFileData } from '../utils/pdfExtractor';
 
 interface PaperChatDrawerProps {
   researchText: string;
   paperTitle: string;
-  apiKey: string;
+  provider: 'openai' | 'gemini';
+  openAiKey: string;
+  geminiKey: string;
+  inlineData?: InlineFileData;
 }
 
 export const PaperChatDrawer: React.FC<PaperChatDrawerProps> = ({
   researchText,
   paperTitle,
-  apiKey,
+  provider,
+  openAiKey,
+  geminiKey,
+  inlineData,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -67,12 +75,26 @@ export const PaperChatDrawer: React.FC<PaperChatDrawerProps> = ({
     setIsLoading(true);
 
     try {
-      const reply = await chatAboutResearchWithGemini(
-        researchText,
-        questionToSend,
-        messages.slice(-4).map((m) => ({ role: m.role, content: m.text })),
-        apiKey
-      );
+      const chatHistory = messages.slice(-4).map((m) => ({
+        role: m.role,
+        content: m.text,
+      }));
+
+      const reply =
+        provider === 'gemini'
+          ? await chatAboutResearchWithGemini(
+              researchText,
+              questionToSend,
+              chatHistory,
+              geminiKey,
+              inlineData
+            )
+          : await chatAboutResearchWithOpenAI(
+              researchText,
+              questionToSend,
+              chatHistory,
+              openAiKey
+            );
 
       const botMsg: ChatMessage = {
         id: 'bot_' + Date.now(),
@@ -100,6 +122,7 @@ export const PaperChatDrawer: React.FC<PaperChatDrawerProps> = ({
     <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden no-print">
       {/* Drawer Toggle Header */}
       <button
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
         className="w-full p-4 sm:p-5 flex items-center justify-between text-right hover:bg-slate-50 transition bg-gradient-to-r from-teal-900 via-slate-900 to-indigo-950 text-white"
       >
@@ -113,7 +136,7 @@ export const PaperChatDrawer: React.FC<PaperChatDrawerProps> = ({
                 اسأل الباحث الذكي عن هذا البحث
               </h3>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-400 text-slate-950">
-                Gemini 4 Chat
+                {provider === 'gemini' ? 'Gemini Chat' : 'GPT-4o Chat'}
               </span>
             </div>
             <p className="text-xs text-slate-300">
@@ -139,6 +162,7 @@ export const PaperChatDrawer: React.FC<PaperChatDrawerProps> = ({
             {suggestedQuestions.map((q, idx) => (
               <button
                 key={idx}
+                type="button"
                 onClick={() => handleSend(q)}
                 disabled={isLoading}
                 className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-slate-100 hover:bg-teal-50 hover:text-teal-900 text-slate-700 border border-slate-200 shrink-0 transition"

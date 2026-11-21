@@ -5,22 +5,25 @@ import {
   Link2,
   Trash2,
   Sparkles,
-  BookOpen,
   CheckCircle2,
   AlertCircle,
   FileCheck,
   ChevronDown,
   ExternalLink,
+  Image as ImageIcon,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { SAMPLE_RESEARCHES, SampleResearch } from '../data/sampleResearches';
-import { extractTextFromFile } from '../utils/pdfExtractor';
+import { extractTextFromFile, ExtractResult } from '../utils/pdfExtractor';
 
 interface InputTabsProps {
   text: string;
   onChangeText: (val: string) => void;
-  onClear: () => void;
-  onAnalyze: () => void;
-  isLoading: boolean;
+  onClearText: () => void;
+  uploadedFile: ExtractResult | null;
+  onFileProcessed: (res: ExtractResult) => void;
+  onClearFile: () => void;
   activeInputTab: 'paste' | 'upload' | 'link';
   setActiveInputTab: (tab: 'paste' | 'upload' | 'link') => void;
 }
@@ -28,15 +31,16 @@ interface InputTabsProps {
 export const InputTabs: React.FC<InputTabsProps> = ({
   text,
   onChangeText,
-  onClear,
-  onAnalyze,
-  isLoading,
+  onClearText,
+  uploadedFile,
+  onFileProcessed,
+  onClearFile,
   activeInputTab,
   setActiveInputTab,
 }) => {
   const [fileProgress, setFileProgress] = useState<{ status: string; percent?: number } | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
-  const [uploadedFileInfo, setUploadedFileInfo] = useState<{ name: string; pages: number; words: number } | null>(null);
+  const [showExtractedPreview, setShowExtractedPreview] = useState(false);
   const [urlInput, setUrlInput] = useState('');
   const [showSamplesDropdown, setShowSamplesDropdown] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -44,12 +48,12 @@ export const InputTabs: React.FC<InputTabsProps> = ({
   const wordCount = text.trim() ? text.trim().split(/\s+/).filter(Boolean).length : 0;
   const charCount = text.length;
 
-  // Handle file upload
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setFileError(null);
+    setShowExtractedPreview(false);
     setFileProgress({ status: 'جاري فتح الملف...', percent: 5 });
 
     try {
@@ -57,17 +61,8 @@ export const InputTabs: React.FC<InputTabsProps> = ({
         setFileProgress({ status, percent });
       });
 
-      onChangeText(res.text);
-      setUploadedFileInfo({
-        name: res.fileName,
-        pages: res.pagesCount,
-        words: res.wordCount,
-      });
-      setFileProgress({ status: `✅ تم استخراج ${res.pagesCount} صفحة (${res.wordCount.toLocaleString()} كلمة)`, percent: 100 });
-      // Switch to paste tab so user can review the extracted text if desired
-      setTimeout(() => {
-        setActiveInputTab('paste');
-      }, 1200);
+      onFileProcessed(res);
+      setFileProgress(null);
     } catch (err: unknown) {
       const error = err as Error;
       setFileError(error.message || 'فشل استخراج محتوى الملف');
@@ -79,7 +74,13 @@ export const InputTabs: React.FC<InputTabsProps> = ({
     }
   };
 
-  // Open paste tab with optional link reference
+  const handleClearUploaded = () => {
+    setFileError(null);
+    setFileProgress(null);
+    setShowExtractedPreview(false);
+    onClearFile();
+  };
+
   const handleUseUrlAndPaste = () => {
     setActiveInputTab('paste');
   };
@@ -93,8 +94,9 @@ export const InputTabs: React.FC<InputTabsProps> = ({
   return (
     <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden no-print">
       {/* Tab Navigation */}
-      <div className="flex border-b border-slate-200 bg-slate-50/70 p-2 gap-1.5 flex-wrap">
+      <div className="flex border-b border-slate-200 bg-slate-50/70 p-2 gap-1.5 flex-wrap items-center">
         <button
+          type="button"
           onClick={() => setActiveInputTab('paste')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition ${
             activeInputTab === 'paste'
@@ -104,6 +106,15 @@ export const InputTabs: React.FC<InputTabsProps> = ({
         >
           <FileText className="w-4 h-4" />
           <span>لصق نص البحث</span>
+          <span
+            className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+              activeInputTab === 'paste'
+                ? 'bg-amber-400/20 text-amber-200 border border-amber-400/30'
+                : 'bg-amber-50 text-amber-800 border border-amber-200'
+            }`}
+          >
+            GPT-4o
+          </span>
           {wordCount > 0 && (
             <span
               className={`text-[11px] px-2 py-0.5 rounded-full font-bold ${
@@ -118,6 +129,7 @@ export const InputTabs: React.FC<InputTabsProps> = ({
         </button>
 
         <button
+          type="button"
           onClick={() => setActiveInputTab('upload')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition ${
             activeInputTab === 'upload'
@@ -126,13 +138,23 @@ export const InputTabs: React.FC<InputTabsProps> = ({
           }`}
         >
           <UploadCloud className="w-4 h-4" />
-          <span>رفع ملف (PDF / TXT / DOCX)</span>
-          {uploadedFileInfo && (
-            <span className="w-2 h-2 rounded-full bg-teal-500 animate-ping"></span>
+          <span>رفع ملف (PDF / TXT / DOCX / صور)</span>
+          <span
+            className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+              activeInputTab === 'upload'
+                ? 'bg-teal-400/20 text-teal-200 border border-teal-400/30'
+                : 'bg-teal-50 text-teal-800 border border-teal-200'
+            }`}
+          >
+            Gemini
+          </span>
+          {uploadedFile && (
+            <span className="w-2 h-2 rounded-full bg-teal-400 animate-ping"></span>
           )}
         </button>
 
         <button
+          type="button"
           onClick={() => setActiveInputTab('link')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition ${
             activeInputTab === 'link'
@@ -147,6 +169,7 @@ export const InputTabs: React.FC<InputTabsProps> = ({
         {/* Quick Sample Selector */}
         <div className="mr-auto relative">
           <button
+            type="button"
             onClick={() => setShowSamplesDropdown(!showSamplesDropdown)}
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 text-xs font-semibold transition"
           >
@@ -158,11 +181,12 @@ export const InputTabs: React.FC<InputTabsProps> = ({
           {showSamplesDropdown && (
             <div className="absolute left-0 top-full mt-1.5 w-72 sm:w-80 bg-white rounded-xl shadow-xl border border-slate-200 py-2 z-20 animate-scale-in">
               <div className="px-3 py-1.5 border-b border-slate-100 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                اختر دراسة لتجربة التحليل الفوري
+                اختر دراسة لتجربة التحليل الفوري (GPT-4o)
               </div>
               {SAMPLE_RESEARCHES.map((s) => (
                 <button
                   key={s.id}
+                  type="button"
                   onClick={() => handleSelectSample(s)}
                   className="w-full text-right px-3.5 py-2.5 hover:bg-teal-50 transition text-xs border-b border-slate-50 last:border-0"
                 >
@@ -177,9 +201,15 @@ export const InputTabs: React.FC<InputTabsProps> = ({
 
       {/* Tab Panels */}
       <div className="p-4 sm:p-5">
-        {/* 1. Paste Tab */}
+        {/* 1. Paste Tab -> OpenAI GPT-4o */}
         {activeInputTab === 'paste' && (
           <div className="space-y-3">
+            <div className="flex items-center justify-between text-xs bg-amber-50/70 border border-amber-200/70 text-amber-900 rounded-xl px-3.5 py-2">
+              <span className="font-semibold">
+                🟠 وضع لصق النص يستخدم مفتاح OpenAI لتحليل البحث عبر نموذج <b>GPT-4o</b>
+              </span>
+            </div>
+
             <div className="relative">
               <textarea
                 value={text}
@@ -190,7 +220,8 @@ export const InputTabs: React.FC<InputTabsProps> = ({
 
               {text && (
                 <button
-                  onClick={onClear}
+                  type="button"
+                  onClick={onClearText}
                   title="مسح النص"
                   className="absolute left-3 top-3 p-1.5 rounded-lg bg-white/90 border border-slate-200 text-slate-400 hover:text-rose-600 hover:border-rose-300 transition"
                 >
@@ -223,7 +254,8 @@ export const InputTabs: React.FC<InputTabsProps> = ({
 
               {text && (
                 <button
-                  onClick={onClear}
+                  type="button"
+                  onClick={onClearText}
                   className="text-rose-600 hover:underline font-semibold"
                 >
                   مسح النص
@@ -233,9 +265,15 @@ export const InputTabs: React.FC<InputTabsProps> = ({
           </div>
         )}
 
-        {/* 2. Upload Tab */}
+        {/* 2. Upload Tab -> Gemini */}
         {activeInputTab === 'upload' && (
           <div className="space-y-4">
+            <div className="flex items-center justify-between text-xs bg-teal-50/80 border border-teal-200/80 text-teal-900 rounded-xl px-3.5 py-2">
+              <span className="font-semibold">
+                🔵 وضع رفع الملفات والصور يستخدم مفتاح <b>Gemini</b> لقراءة PDF / TXT / DOCX والصور وتحليلها مباشرة
+              </span>
+            </div>
+
             <label
               htmlFor="research-file-input"
               className="border-2 border-dashed border-slate-300 hover:border-teal-500 rounded-2xl p-8 text-center cursor-pointer bg-slate-50/60 hover:bg-teal-50/30 transition flex flex-col items-center justify-center gap-3 group"
@@ -245,22 +283,22 @@ export const InputTabs: React.FC<InputTabsProps> = ({
               </div>
               <div>
                 <strong className="text-sm sm:text-base text-slate-800 font-bold block">
-                  اضغط هنا لاختيار ملف أو اسحبه إلى هنا
+                  اضغط هنا لاختيار ملف أو صورة للتحليل عبر Gemini
                 </strong>
                 <span className="text-xs text-slate-500 mt-1 block">
-                  يدعم ملفات PDF الأكاديمية بالكامل، مستندات TXT و Markdown حتى 20 ميجابايت
+                  يدعم ملفات PDF الأكاديمية، مستندات DOCX / TXT / Markdown، والصور (PNG / JPG / WEBP)
                 </span>
               </div>
               <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full bg-slate-100 text-slate-600 group-hover:bg-teal-100 group-hover:text-teal-900 transition">
                 <FileCheck className="w-3.5 h-3.5 text-teal-600" />
-                قراءة واستخراج آلي متعدد الصفحات
+                قراءة واستخراج آلي مدعوم بـ Gemini AI
               </span>
             </label>
             <input
               ref={fileInputRef}
               id="research-file-input"
               type="file"
-              accept=".pdf,.txt,.md,.text,.docx"
+              accept=".pdf,.txt,.md,.text,.docx,.png,.jpg,.jpeg,.webp,.gif"
               onChange={handleFileChange}
               className="hidden"
             />
@@ -290,29 +328,85 @@ export const InputTabs: React.FC<InputTabsProps> = ({
               </div>
             )}
 
-            {uploadedFileInfo && (
-              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-teal-600" />
-                  <span className="font-bold text-slate-900">{uploadedFileInfo.name}</span>
-                  <span>({uploadedFileInfo.pages} صفحات • {uploadedFileInfo.words.toLocaleString()} كلمة)</span>
+            {uploadedFile && (
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 space-y-3">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    {uploadedFile.isImage ? (
+                      <ImageIcon className="w-4 h-4 text-teal-600" />
+                    ) : (
+                      <CheckCircle2 className="w-4 h-4 text-teal-600" />
+                    )}
+                    <span className="font-bold text-slate-900">{uploadedFile.fileName}</span>
+                    {uploadedFile.isImage ? (
+                      <span className="px-2 py-0.5 rounded-full bg-teal-100 text-teal-900 font-semibold">
+                        صورة جاهزة للتحليل البصري عبر Gemini
+                      </span>
+                    ) : (
+                      <span>
+                        ({uploadedFile.pagesCount} صفحة • {uploadedFile.wordCount.toLocaleString()} كلمة)
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    {uploadedFile.text && (
+                      <button
+                        type="button"
+                        onClick={() => setShowExtractedPreview((v) => !v)}
+                        className="inline-flex items-center gap-1 text-teal-700 hover:underline font-bold text-xs"
+                      >
+                        {showExtractedPreview ? (
+                          <>
+                            <EyeOff className="w-3.5 h-3.5" />
+                            <span>إخفاء المعاينة</span>
+                          </>
+                        ) : (
+                          <>
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>معاينة النص المستخرج</span>
+                          </>
+                        )}
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={handleClearUploaded}
+                      className="inline-flex items-center gap-1 text-rose-600 hover:underline font-bold text-xs"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>إزالة الملف</span>
+                    </button>
+                  </div>
                 </div>
-                <button
-                  onClick={() => setActiveInputTab('paste')}
-                  className="text-teal-700 hover:underline font-bold text-xs"
-                >
-                  معاينة النص المستخرج
-                </button>
+
+                {uploadedFile.isImage && uploadedFile.inlineData?.previewUrl && (
+                  <div className="pt-1">
+                    <img
+                      src={uploadedFile.inlineData.previewUrl}
+                      alt={uploadedFile.fileName}
+                      className="max-h-56 rounded-xl border border-slate-200 object-contain bg-white p-1"
+                    />
+                  </div>
+                )}
+
+                {showExtractedPreview && uploadedFile.text && (
+                  <div className="p-3 rounded-lg bg-white border border-slate-200 max-h-48 overflow-y-auto text-xs text-slate-700 leading-relaxed whitespace-pre-wrap">
+                    {uploadedFile.text.slice(0, 4000)}
+                    {uploadedFile.text.length > 4000 && '\n\n... (تم عرض أول 4000 حرف للمعاينة فقط)'}
+                  </div>
+                )}
               </div>
             )}
           </div>
         )}
 
-        {/* 3. Link Tab (Pure Client-Side Copy/Paste) */}
+        {/* 3. Link Tab (Pure Client-Side Copy/Paste -> OpenAI GPT-4o) */}
         {activeInputTab === 'link' && (
           <div className="space-y-4">
             <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs sm:text-sm text-slate-700 leading-relaxed">
-              لتحليل بحث منشور على الإنترنت مباشرة من المتصفح، ضع الرابط هنا للفتح السريع ثم انسخ نص البحث وألصقه في الصندوق أدناه:
+              لتحليل بحث منشور على الإنترنت مباشرة من المتصفح (عبر GPT-4o)، ضع الرابط هنا للفتح السريع ثم انسخ نص البحث وألصقه في الصندوق أدناه:
             </div>
 
             <div className="flex flex-col sm:flex-row gap-2">

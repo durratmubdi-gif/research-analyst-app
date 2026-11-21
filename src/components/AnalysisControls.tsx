@@ -1,6 +1,6 @@
 import React from 'react';
 import { AnalysisMode } from '../types/research';
-import { Sparkles, Compass, ShieldAlert, Award, FileSearch, Layers } from 'lucide-react';
+import { Sparkles, ShieldAlert, Award, FileSearch, Layers } from 'lucide-react';
 
 interface AnalysisControlsProps {
   mode: AnalysisMode;
@@ -9,6 +9,7 @@ interface AnalysisControlsProps {
   isLoading: boolean;
   canAnalyze: boolean;
   loadingStepText?: string;
+  provider: 'openai' | 'gemini';
 }
 
 export const AnalysisControls: React.FC<AnalysisControlsProps> = ({
@@ -18,6 +19,7 @@ export const AnalysisControls: React.FC<AnalysisControlsProps> = ({
   isLoading,
   canAnalyze,
   loadingStepText,
+  provider,
 }) => {
   const modes: Array<{
     id: AnalysisMode;
@@ -50,6 +52,11 @@ export const AnalysisControls: React.FC<AnalysisControlsProps> = ({
       icon: <Award className="w-4 h-4 text-emerald-600" />,
     },
   ];
+
+  const actionLabel =
+    provider === 'gemini'
+      ? 'حلل الملف أو الصورة عبر Gemini الآن ✨'
+      : 'حلل النص عبر GPT-4o الآن ✨';
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-xs space-y-4 no-print">
@@ -97,6 +104,7 @@ export const AnalysisControls: React.FC<AnalysisControlsProps> = ({
       {/* Main Action Button */}
       <div className="pt-2 flex flex-col sm:flex-row items-center gap-3">
         <button
+          type="button"
           onClick={onAnalyze}
           disabled={isLoading || !canAnalyze}
           className={`w-full sm:flex-1 py-3.5 px-6 rounded-xl font-bold text-sm sm:text-base transition flex items-center justify-center gap-2.5 shadow-lg ${
@@ -108,12 +116,12 @@ export const AnalysisControls: React.FC<AnalysisControlsProps> = ({
           {isLoading ? (
             <>
               <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-              <span>{loadingStepText || 'جاري تحليل البحث بواسطة Gemini AI...'}</span>
+              <span>{loadingStepText || 'جاري تحليل البحث الأكاديمي...'}</span>
             </>
           ) : (
             <>
               <Sparkles className="w-5 h-5 text-teal-300 animate-pulse" />
-              <span>حلل البحث الأكاديمي الآن ✨</span>
+              <span>{actionLabel}</span>
             </>
           )}
         </button>

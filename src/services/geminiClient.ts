@@ -1,4 +1,5 @@
 import { AnalysisMode, AnalysisResult } from '../types/research';
+import { InlineFileData } from '../utils/pdfExtractor';
 
 const API_KEY_STORAGE_KEY = 'gemini_api_key';
 const LEGACY_API_KEY_STORAGE_KEY = 'gemini_key';
@@ -32,10 +33,10 @@ function parseGeminiError(status: number, bodyText: string): string {
     const json = JSON.parse(bodyText);
     const msg = json?.error?.message || '';
     if (status === 400 || status === 403 || msg.includes('API_KEY_INVALID') || msg.includes('API key')) {
-      return 'مفتاح Gemini API غير صالح أو منتهي الصلاحية. يرجى التأكد من نسخ المفتاح الصحيح من Google AI Studio.';
+      return 'مفتاح Gemini API غير صالح أو منتهي الصلاحية. يرجى التأكد من المفتاح في صفحة المفتاح.';
     }
     if (status === 429) {
-      return 'تم تجاوز حد الاستخدام المسموح للمفتاح حالياً (429). يرجى الانتظار قليلاً ثم إعادة المحاولة.';
+      return 'تم تجاوز حد الاستخدام المسموح لمفتاح Gemini حالياً (429). يرجى الانتظار قليلاً ثم إعادة المحاولة.';
     }
     if (status === 404) {
       return `النموذج (${GEMINI_MODEL}) غير متاح لهذا المفتاح حالياً.`;
@@ -50,15 +51,17 @@ function parseGeminiError(status: number, bodyText: string): string {
 export async function analyzeResearchWithGemini(
   text: string,
   mode: AnalysisMode,
-  apiKey: string
+  apiKey: string,
+  inlineData?: InlineFileData
 ): Promise<AnalysisResult> {
   const cleanKey = apiKey.trim();
   if (!cleanKey) {
-    throw new Error('الرجاء إدخال مفتاح Gemini API وحفظه أولاً في الأعلى لتشغيل التحليل.');
+    throw new Error('الرجاء إدخال مفتاح Gemini API وحفظه في صفحة المفتاح لتحليل الملفات والصور.');
   }
 
-  if (!text || text.trim().length < 40) {
-    throw new Error('النص المدخل قصير جداً للتحليل الأكاديمي. الرجاء إدخال فقرة كاملة أو ورقة بحثية.');
+  const hasText = Boolean(text && text.trim().length >= 30);
+  if (!hasText && !inlineData) {
+    throw new Error('الرجاء رفع ملف (PDF/TXT/DOCX) أو صورة صالحة للتحليل.');
   }
 
   const analysisTypeNames: Record<string, string> = {
@@ -72,22 +75,31 @@ export async function analyzeResearchWithGemini(
   const typeDesc = analysisTypeNames[mode] || analysisTypeNames.full;
 
   const systemInstruction = `أنت خبير ومحكم أكاديمي مرموق متخصص في تفكيك وتحليل الأبحاث والدراسات العلمية باللغة العربية.
-مهمتك: قراءة النص البحثي المقدم، واستخراج بنيته العلمية بمنتهى الدقة والموضوعية الأكاديمية.
+مهمتك: قراءة الملف أو الصورة أو النص البحثي المقدم، واستخراج بنيته العلمية بمنتهى الدقة والموضوعية الأكاديمية.
 نوع التحليل المطلوب: ${typeDesc}.
 
 قواعد التحليل:
-1. استند فقط إلى ما ورد في النص أو ما يمكن استنباطه منطقياً منه.
+1. استند فقط إلى ما ورد في الملف/الصورة أو ما يمكن استنباطه منطقياً منه.
 2. استخدم لغة عربية أكاديمية فصيحة، واضحة ورصينة.
 3. قيّم جودة البحث من 0 إلى 100 بناءً على وضوح المشكلة، تماسك المنهجية، كفاية الأدلة، وموثوقية النتائج.
 4. في بنك أسئلة المناقشة: قدّم أسئلة عميقة ومتوقعة قد يطرحها محكم أكاديمي، مع تقديم إرشادات نموذجية للإجابة (الفكرة المحورية، الدليل الأكاديمي، والخلاصة).
 5. يجب أن تعيد النتيجة بصيغة JSON مطابقة تماماً للمخطط المحدد.`;
 
-  const prompt = `حلل البحث الأكاديمي التالي بدقة:
+  const parts: Array<Record<string, unknown>> = [];
+  if (inlineData) {
+    parts.push({
+      inlineData: {
+        mimeType: inlineData.mimeType,
+        data: inlineData.data,
+      },
+    });
+  }
 
-نص البحث:
-"""
-${text.slice(0, 35000)}
-"""`;
+  const promptText = hasText
+    ? `حلل البحث الأكاديمي التالي بدقة:\n\nنص البحث:\n"""\n${text.slice(0, 35000)}\n"""`
+    : 'اقرأ محتوى الملف أو الصورة المرفقة بدقة واستخرج كافة النصوص والبيانات والجداول فيه، ثم حلله أكاديمياً وفق المخطط المحدد.';
+
+  parts.push({ text: promptText });
 
   const responseSchema = {
     type: 'OBJECT',
@@ -210,7 +222,7 @@ ${text.slice(0, 35000)}
       contents: [
         {
           role: 'user',
-          parts: [{ text: prompt }],
+          parts,
         },
       ],
       generationConfig: {
@@ -243,21 +255,32 @@ export async function chatAboutResearchWithGemini(
   researchText: string,
   question: string,
   history: Array<{ role: 'user' | 'assistant'; content: string }>,
-  apiKey: string
+  apiKey: string,
+  inlineData?: InlineFileData
 ): Promise<string> {
   const cleanKey = apiKey.trim();
   if (!cleanKey) {
-    throw new Error('الرجاء إدخال مفتاح Gemini API وحفظه في أعلى الصفحة لاستخدام المحادثة.');
+    throw new Error('الرجاء إدخال مفتاح Gemini API وحفظه في صفحة المفتاح لاستخدام المحادثة.');
   }
 
   const systemInstruction = `أنت المساعد الأكاديمي الذكي المخصص لهذا البحث.
-لديك النص الكامل للبحث أدناه، ومهمتك الإجابة عن أي سؤال يطرحه الباحث أو الطالب الأكاديمي بدقة علمية واقتباسات دقيقة من النص متى ما أمكن.
-إذا كان السؤال يطلب تحضيراً لشرائح عرض، صياغة فرضيات بديلة، مقترحات بحثية مستقبلية، أو نقد نقطة معينة، قدم إجابة منظمة أكاديمية غنية وعملية باللغة العربية الفصحى.
+لديك محتوى البحث أدناه، ومهمتك الإجابة عن أي سؤال يطرحه الباحث أو الطالب الأكاديمي بدقة علمية واقتباسات دقيقة متى ما أمكن باللغة العربية الفصحى.
 
-نص البحث المرجعي:
-"""
-${(researchText || '').slice(0, 30000)}
-"""`;
+${
+  researchText
+    ? `نص البحث المرجعي:\n"""\n${researchText.slice(0, 30000)}\n"""`
+    : 'المرجع الأساسي هو الملف أو الصورة المرفقة في المحادثة.'
+}`;
+
+  const firstParts: Array<Record<string, unknown>> = [];
+  if (inlineData) {
+    firstParts.push({
+      inlineData: {
+        mimeType: inlineData.mimeType,
+        data: inlineData.data,
+      },
+    });
+  }
 
   const contents = [
     ...history.map((m) => ({
@@ -266,7 +289,7 @@ ${(researchText || '').slice(0, 30000)}
     })),
     {
       role: 'user',
-      parts: [{ text: question }],
+      parts: [...firstParts, { text: question }],
     },
   ];
 
