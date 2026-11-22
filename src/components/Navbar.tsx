@@ -8,7 +8,6 @@ interface NavbarProps {
   hasResults: boolean;
   onPrint: () => void;
   onOpenApiSettings: () => void;
-  hasApiKey: boolean;
   isKeyPage: boolean;
 }
 
@@ -19,7 +18,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   hasResults,
   onPrint,
   onOpenApiSettings,
-  hasApiKey,
   isKeyPage,
 }) => {
   return (
@@ -65,7 +63,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             title="إعدادات مفتاح Gemini و OpenAI API"
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold border bg-white hover:bg-slate-100 text-slate-700 border-slate-200 transition"
           >
-            <Key className={`w-3.5 h-3.5 ${hasApiKey ? 'text-emerald-600' : 'text-amber-600'}`} />
+            <Key className="w-3.5 h-3.5 text-slate-600" />
             <span>إعدادات مفتاح API</span>
             <Settings className="w-3 h-3 text-slate-400 hidden sm:inline" />
           </button>

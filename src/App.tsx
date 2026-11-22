@@ -18,7 +18,6 @@ import { ResearchWriterStudio } from './components/ResearchWriterStudio';
 import {
   analyzeResearchWithGemini,
   detectAiContentWithGemini,
-  getStoredGeminiKey,
   saveGeminiKey,
   clearStoredGeminiKey,
 } from './services/geminiClient';
@@ -78,7 +77,6 @@ export default function App() {
   const [isSavedModalOpen, setIsSavedModalOpen] = useState<boolean>(false);
   const [isCurrentSaved, setIsCurrentSaved] = useState<boolean>(false);
   const [openAiKey, setOpenAiKey] = useState<string>(() => getStoredOpenAiKey());
-  const [geminiKey, setGeminiKey] = useState<string>(() => getStoredGeminiKey());
   const [isApiSettingsOpen, setIsApiSettingsOpen] = useState<boolean>(false);
   const [isKeyPage, setIsKeyPage] = useState<boolean>(() => window.location.hash === '#/key');
 
@@ -90,7 +88,6 @@ export default function App() {
     const handleHashChange = () => {
       setIsKeyPage(window.location.hash === '#/key');
       setOpenAiKey(getStoredOpenAiKey());
-      setGeminiKey(getStoredGeminiKey());
     };
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
@@ -114,7 +111,6 @@ export default function App() {
     window.location.hash = '';
     setIsKeyPage(false);
     setOpenAiKey(getStoredOpenAiKey());
-    setGeminiKey(getStoredGeminiKey());
   };
 
   const handleSaveOpenAiKey = (key: string) => {
@@ -130,13 +126,11 @@ export default function App() {
 
   const handleSaveGeminiKey = (key: string) => {
     saveGeminiKey(key);
-    setGeminiKey(key.trim());
     if (errorMessage) setErrorMessage(null);
   };
 
   const handleClearGeminiKey = () => {
     clearStoredGeminiKey();
-    setGeminiKey('');
   };
 
   const currentProvider: 'openai' | 'gemini' = activeInputTab === 'upload' ? 'gemini' : 'openai';
@@ -367,14 +361,12 @@ export default function App() {
         hasResults={!!analysisResult}
         onPrint={handlePrint}
         onOpenApiSettings={openApiSettings}
-        hasApiKey={Boolean(openAiKey.trim() || geminiKey.trim())}
         isKeyPage={isKeyPage}
       />
 
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
         {isKeyPage ? (
           <KeyPage
-            hasOpenAiKey={Boolean(openAiKey.trim())}
             onSaveOpenAiKey={handleSaveOpenAiKey}
             onBack={closeKeyPage}
           />
@@ -632,8 +624,6 @@ export default function App() {
       <ApiKeysModal
         isOpen={isApiSettingsOpen}
         onClose={() => setIsApiSettingsOpen(false)}
-        geminiKey={geminiKey}
-        openAiKey={openAiKey}
         onSaveGeminiKey={handleSaveGeminiKey}
         onClearGeminiKey={handleClearGeminiKey}
         onSaveOpenAiKey={handleSaveOpenAiKey}

@@ -10,13 +10,11 @@ const PAGE_PASSWORD = 'Aakkmm@2013';
 const STORAGE_KEY = 'key_authorized';
 
 interface KeyPageProps {
-  hasOpenAiKey: boolean;
   onSaveOpenAiKey: (key: string) => void;
   onBack: () => void;
 }
 
 export const KeyPage: React.FC<KeyPageProps> = ({
-  hasOpenAiKey,
   onSaveOpenAiKey,
   onBack,
 }) => {
@@ -178,23 +176,18 @@ export const KeyPage: React.FC<KeyPageProps> = ({
 
         <form onSubmit={handleSave} className="space-y-4">
           <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <label htmlFor="openai-key-field" className="text-sm font-bold text-slate-800">
-                مفتاح OpenAI API (لتحليل النصوص عبر GPT-4o)
-              </label>
-              {hasOpenAiKey && (
-                <span className="text-[11px] font-bold text-emerald-700">محفوظ ✓</span>
-              )}
-            </div>
+            <label htmlFor="openai-key-field" className="block text-sm font-bold text-slate-800">
+              مفتاح OpenAI API (لتحليل النصوص عبر GPT-4o)
+            </label>
             <input
               id="openai-key-field"
               type="password"
               value={openAiInput}
               onChange={(e) => setOpenAiInput(e.target.value)}
-              placeholder="أدخل مفتاح OpenAI هنا..."
+              placeholder="أدخل مفتاح OpenAI الخاص بك للتجربة (sk-...)"
               autoComplete="off"
-              dir="ltr"
-              className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-sm font-mono focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-teal-600 transition text-left"
+              dir="auto"
+              className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-teal-600 transition placeholder:text-slate-400"
             />
           </div>
 

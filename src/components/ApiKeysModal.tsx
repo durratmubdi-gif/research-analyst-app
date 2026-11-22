@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { X, Key, Eye, EyeOff, Trash2, CheckCircle2, Globe } from 'lucide-react';
+import { X, Key, Eye, EyeOff, Globe } from 'lucide-react';
 
 interface ApiKeysModalProps {
   isOpen: boolean;
   onClose: () => void;
-  geminiKey: string;
-  openAiKey: string;
   onSaveGeminiKey: (key: string) => void;
   onClearGeminiKey: () => void;
   onSaveOpenAiKey: (key: string) => void;
@@ -15,8 +13,6 @@ interface ApiKeysModalProps {
 export const ApiKeysModal: React.FC<ApiKeysModalProps> = ({
   isOpen,
   onClose,
-  geminiKey,
-  openAiKey,
   onSaveGeminiKey,
   onClearGeminiKey,
   onSaveOpenAiKey,
@@ -26,15 +22,20 @@ export const ApiKeysModal: React.FC<ApiKeysModalProps> = ({
   const [openAiInput, setOpenAiInput] = useState('');
   const [showGemini, setShowGemini] = useState(false);
   const [showOpenAi, setShowOpenAi] = useState(false);
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [statusMessage, setStatusMessage] = useState<{
+    text: string;
+    tone: 'success' | 'info' | 'warning';
+  } | null>(null);
 
   useEffect(() => {
     if (isOpen) {
-      setGeminiInput(geminiKey);
-      setOpenAiInput(openAiKey);
+      setGeminiInput('');
+      setOpenAiInput('');
+      setShowGemini(false);
+      setShowOpenAi(false);
       setStatusMessage(null);
     }
-  }, [isOpen, geminiKey, openAiKey]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -43,19 +44,39 @@ export const ApiKeysModal: React.FC<ApiKeysModalProps> = ({
     const cleanGemini = geminiInput.trim();
     const cleanOpenAi = openAiInput.trim();
 
+    if (!cleanGemini && !cleanOpenAi) {
+      setStatusMessage({
+        text: 'يرجى إدخال مفتاح Gemini أو OpenAI الخاص بك أولاً قبل الحفظ.',
+        tone: 'warning',
+      });
+      return;
+    }
+
     if (cleanGemini) {
       onSaveGeminiKey(cleanGemini);
-    } else if (geminiKey) {
-      onClearGeminiKey();
     }
-
     if (cleanOpenAi) {
       onSaveOpenAiKey(cleanOpenAi);
-    } else if (openAiKey) {
-      onClearOpenAiKey();
     }
 
-    setStatusMessage('تم حفظ إعدادات المفاتيح محلياً في المتصفح بنجاح ✅');
+    setGeminiInput('');
+    setOpenAiInput('');
+    setStatusMessage({
+      text: 'تم حفظ المفتاح المدخل محلياً في متصفحك بنجاح.',
+      tone: 'success',
+    });
+    setTimeout(() => setStatusMessage(null), 3500);
+  };
+
+  const handleResetStoredKeys = () => {
+    onClearGeminiKey();
+    onClearOpenAiKey();
+    setGeminiInput('');
+    setOpenAiInput('');
+    setStatusMessage({
+      text: 'تم مسح المفاتيح من هذا المتصفح.',
+      tone: 'info',
+    });
     setTimeout(() => setStatusMessage(null), 3000);
   };
 
@@ -78,7 +99,7 @@ export const ApiKeysModal: React.FC<ApiKeysModalProps> = ({
                 إعدادات مفتاح API
               </h2>
               <p className="text-[11px] text-slate-300">
-                تُحفظ المفاتيح محلياً في المتصفح (localStorage) للعمل مباشرة على الاستضافة الثابتة
+                أدخل مفتاحك الشخصي عند الرغبة في التجربة؛ يُحفظ محلياً في متصفحك فقط
               </p>
             </div>
           </div>
@@ -98,38 +119,15 @@ export const ApiKeysModal: React.FC<ApiKeysModalProps> = ({
           <div className="p-3 rounded-xl bg-teal-50/80 border border-teal-200/80 text-xs text-teal-900 flex items-start gap-2.5 leading-relaxed">
             <Globe className="w-4 h-4 text-teal-700 shrink-0 mt-0.5" />
             <span>
-              عند النشر على استضافة ثابتة مثل GitHub Pages حيث لا يتوفر خادم خلفي، يستخدم التطبيق هذه المفاتيح مباشرة من متصفحك لإتمام التحليل وكتابة الفصول دون أخطاء 405.
+              عند تجربة المنصة عبر استضافة ثابتة، يمكنك إدخال مفتاحك الخاص هنا ليُستخدم مباشرة من متصفحك دون مشاركة أو تخزين على أي خادم خارجي.
             </span>
           </div>
 
           {/* Gemini API Key */}
           <div className="space-y-1.5">
-            <div className="flex items-center justify-between gap-2">
-              <label htmlFor="modal-gemini-key" className="text-xs sm:text-sm font-bold text-slate-800">
-                مفتاح Gemini API (للملفات، الصور، وتوليد الفصول)
-              </label>
-              <div className="flex items-center gap-2">
-                {geminiKey && (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700">
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>محفوظ</span>
-                  </span>
-                )}
-                {geminiKey && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onClearGeminiKey();
-                      setGeminiInput('');
-                    }}
-                    title="مسح مفتاح Gemini"
-                    className="text-rose-600 hover:text-rose-800 p-1 rounded transition"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
-            </div>
+            <label htmlFor="modal-gemini-key" className="block text-xs sm:text-sm font-bold text-slate-800">
+              مفتاح Gemini API (للملفات، الصور، وتوليد الفصول)
+            </label>
 
             <div className="relative">
               <input
@@ -137,10 +135,10 @@ export const ApiKeysModal: React.FC<ApiKeysModalProps> = ({
                 type={showGemini ? 'text' : 'password'}
                 value={geminiInput}
                 onChange={(e) => setGeminiInput(e.target.value)}
-                placeholder="AIzaSy..."
+                placeholder="أدخل مفتاح Gemini الخاص بك للتجربة (AIza...)"
                 autoComplete="off"
-                dir="ltr"
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-mono focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-teal-600 transition text-left"
+                dir="auto"
+                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-teal-600 transition placeholder:text-slate-400"
               />
               <button
                 type="button"
@@ -155,32 +153,9 @@ export const ApiKeysModal: React.FC<ApiKeysModalProps> = ({
 
           {/* OpenAI API Key */}
           <div className="space-y-1.5">
-            <div className="flex items-center justify-between gap-2">
-              <label htmlFor="modal-openai-key" className="text-xs sm:text-sm font-bold text-slate-800">
-                مفتاح OpenAI API (لتحليل النصوص عبر GPT-4o وكبديل تلقائي)
-              </label>
-              <div className="flex items-center gap-2">
-                {openAiKey && (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700">
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>محفوظ</span>
-                  </span>
-                )}
-                {openAiKey && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onClearOpenAiKey();
-                      setOpenAiInput('');
-                    }}
-                    title="مسح مفتاح OpenAI"
-                    className="text-rose-600 hover:text-rose-800 p-1 rounded transition"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
-            </div>
+            <label htmlFor="modal-openai-key" className="block text-xs sm:text-sm font-bold text-slate-800">
+              مفتاح OpenAI API (لتحليل النصوص عبر GPT-4o وكبديل تلقائي)
+            </label>
 
             <div className="relative">
               <input
@@ -188,10 +163,10 @@ export const ApiKeysModal: React.FC<ApiKeysModalProps> = ({
                 type={showOpenAi ? 'text' : 'password'}
                 value={openAiInput}
                 onChange={(e) => setOpenAiInput(e.target.value)}
-                placeholder="sk-proj-..."
+                placeholder="أدخل مفتاح OpenAI الخاص بك للتجربة (sk-...)"
                 autoComplete="off"
-                dir="ltr"
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-mono focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-teal-600 transition text-left"
+                dir="auto"
+                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-teal-600 transition placeholder:text-slate-400"
               />
               <button
                 type="button"
@@ -205,25 +180,43 @@ export const ApiKeysModal: React.FC<ApiKeysModalProps> = ({
           </div>
 
           {statusMessage && (
-            <p className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl py-2 px-3 text-center">
-              {statusMessage}
+            <p
+              className={`text-xs font-bold rounded-xl py-2 px-3 text-center border ${
+                statusMessage.tone === 'success'
+                  ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
+                  : statusMessage.tone === 'warning'
+                    ? 'text-amber-800 bg-amber-50 border-amber-200'
+                    : 'text-slate-700 bg-slate-50 border-slate-200'
+              }`}
+            >
+              {statusMessage.text}
             </p>
           )}
 
-          <div className="flex items-center justify-end gap-2.5 pt-2">
+          <div className="flex flex-wrap items-center justify-between gap-2.5 pt-2">
             <button
               type="button"
-              onClick={onClose}
-              className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold transition"
+              onClick={handleResetStoredKeys}
+              className="px-3 py-2 rounded-xl text-xs font-semibold text-slate-500 hover:text-rose-700 hover:bg-rose-50 transition"
             >
-              إغلاق
+              مسح المفاتيح من المتصفح
             </button>
-            <button
-              type="submit"
-              className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-teal-900 text-white text-sm font-bold transition"
-            >
-              حفظ المفاتيح محلياً
-            </button>
+
+            <div className="flex items-center gap-2.5">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold transition"
+              >
+                إغلاق
+              </button>
+              <button
+                type="submit"
+                className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-teal-900 text-white text-sm font-bold transition"
+              >
+                حفظ المفتاح محلياً
+              </button>
+            </div>
           </div>
         </form>
       </div>
