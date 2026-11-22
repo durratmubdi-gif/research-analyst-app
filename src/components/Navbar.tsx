@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookOpen, Sparkles, Bookmark, RotateCcw, Printer, Key } from 'lucide-react';
+import { BookOpen, Sparkles, Bookmark, RotateCcw, Printer, Settings, Key } from 'lucide-react';
 
 interface NavbarProps {
   savedCount: number;
@@ -7,7 +7,7 @@ interface NavbarProps {
   onReset: () => void;
   hasResults: boolean;
   onPrint: () => void;
-  onOpenKeyPage: () => void;
+  onOpenApiSettings: () => void;
   hasApiKey: boolean;
   isKeyPage: boolean;
 }
@@ -18,7 +18,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onReset,
   hasResults,
   onPrint,
-  onOpenKeyPage,
+  onOpenApiSettings,
   hasApiKey,
   isKeyPage,
 }) => {
@@ -60,16 +60,14 @@ export const Navbar: React.FC<NavbarProps> = ({
           )}
 
           <button
-            onClick={onOpenKeyPage}
-            title="إدارة مفتاح OpenAI API"
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold border transition ${
-              isKeyPage
-                ? 'bg-slate-900 text-white border-slate-900'
-                : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200'
-            }`}
+            type="button"
+            onClick={onOpenApiSettings}
+            title="إعدادات مفتاح Gemini و OpenAI API"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold border bg-white hover:bg-slate-100 text-slate-700 border-slate-200 transition"
           >
             <Key className={`w-3.5 h-3.5 ${hasApiKey ? 'text-emerald-600' : 'text-amber-600'}`} />
-            <span className="hidden sm:inline">صفحة المفتاح</span>
+            <span>إعدادات مفتاح API</span>
+            <Settings className="w-3 h-3 text-slate-400 hidden sm:inline" />
           </button>
 
           <button

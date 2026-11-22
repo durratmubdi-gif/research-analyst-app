@@ -12,17 +12,22 @@ import { ActionPlanSection } from './components/ActionPlanSection';
 import { PaperChatDrawer } from './components/PaperChatDrawer';
 import { SavedLibraryModal } from './components/SavedLibraryModal';
 import { KeyPage } from './components/KeyPage';
+import { ApiKeysModal } from './components/ApiKeysModal';
 import { AiDetectionSection } from './components/AiDetectionSection';
 import { ResearchWriterStudio } from './components/ResearchWriterStudio';
 import {
   analyzeResearchWithGemini,
   detectAiContentWithGemini,
+  getStoredGeminiKey,
+  saveGeminiKey,
+  clearStoredGeminiKey,
 } from './services/geminiClient';
 import {
   analyzeResearchWithOpenAI,
   detectAiContentWithOpenAI,
   getStoredOpenAiKey,
   saveOpenAiKey,
+  clearStoredOpenAiKey,
 } from './services/openaiClient';
 import {
   AnalysisResult,
@@ -73,6 +78,8 @@ export default function App() {
   const [isSavedModalOpen, setIsSavedModalOpen] = useState<boolean>(false);
   const [isCurrentSaved, setIsCurrentSaved] = useState<boolean>(false);
   const [openAiKey, setOpenAiKey] = useState<string>(() => getStoredOpenAiKey());
+  const [geminiKey, setGeminiKey] = useState<string>(() => getStoredGeminiKey());
+  const [isApiSettingsOpen, setIsApiSettingsOpen] = useState<boolean>(false);
   const [isKeyPage, setIsKeyPage] = useState<boolean>(() => window.location.hash === '#/key');
 
   // Load saved list on mount & listen to hash navigation
@@ -83,6 +90,7 @@ export default function App() {
     const handleHashChange = () => {
       setIsKeyPage(window.location.hash === '#/key');
       setOpenAiKey(getStoredOpenAiKey());
+      setGeminiKey(getStoredGeminiKey());
     };
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
@@ -98,22 +106,37 @@ export default function App() {
     }
   };
 
-  const openKeyPage = () => {
-    window.location.hash = '#/key';
-    setIsKeyPage(true);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+  const openApiSettings = () => {
+    setIsApiSettingsOpen(true);
   };
 
   const closeKeyPage = () => {
     window.location.hash = '';
     setIsKeyPage(false);
     setOpenAiKey(getStoredOpenAiKey());
+    setGeminiKey(getStoredGeminiKey());
   };
 
   const handleSaveOpenAiKey = (key: string) => {
     saveOpenAiKey(key);
     setOpenAiKey(key.trim());
     if (errorMessage) setErrorMessage(null);
+  };
+
+  const handleClearOpenAiKey = () => {
+    clearStoredOpenAiKey();
+    setOpenAiKey('');
+  };
+
+  const handleSaveGeminiKey = (key: string) => {
+    saveGeminiKey(key);
+    setGeminiKey(key.trim());
+    if (errorMessage) setErrorMessage(null);
+  };
+
+  const handleClearGeminiKey = () => {
+    clearStoredGeminiKey();
+    setGeminiKey('');
   };
 
   const currentProvider: 'openai' | 'gemini' = activeInputTab === 'upload' ? 'gemini' : 'openai';
@@ -343,8 +366,8 @@ export default function App() {
         }}
         hasResults={!!analysisResult}
         onPrint={handlePrint}
-        onOpenKeyPage={openKeyPage}
-        hasApiKey={Boolean(openAiKey.trim())}
+        onOpenApiSettings={openApiSettings}
+        hasApiKey={Boolean(openAiKey.trim() || geminiKey.trim())}
         isKeyPage={isKeyPage}
       />
 
@@ -473,14 +496,14 @@ export default function App() {
                     <p className="text-rose-700 mt-0.5">{errorMessage}</p>
                   </div>
                 </div>
-                {missingRequiredKey && (
+                {(missingRequiredKey || errorMessage.includes('إعدادات مفتاح API')) && (
                   <button
                     type="button"
-                    onClick={openKeyPage}
+                    onClick={openApiSettings}
                     className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-teal-900 text-white text-xs font-bold transition inline-flex items-center gap-1.5 shrink-0"
                   >
                     <Key className="w-3.5 h-3.5" />
-                    <span>الذهاب إلى صفحة المفتاح</span>
+                    <span>فتح إعدادات مفتاح API</span>
                   </button>
                 )}
               </div>
@@ -603,6 +626,18 @@ export default function App() {
         savedList={savedList}
         onOpenItem={handleOpenSavedItem}
         onDeleteItem={handleDeleteSavedItem}
+      />
+
+      {/* API Keys Settings Modal */}
+      <ApiKeysModal
+        isOpen={isApiSettingsOpen}
+        onClose={() => setIsApiSettingsOpen(false)}
+        geminiKey={geminiKey}
+        openAiKey={openAiKey}
+        onSaveGeminiKey={handleSaveGeminiKey}
+        onClearGeminiKey={handleClearGeminiKey}
+        onSaveOpenAiKey={handleSaveOpenAiKey}
+        onClearOpenAiKey={handleClearOpenAiKey}
       />
     </div>
   );
